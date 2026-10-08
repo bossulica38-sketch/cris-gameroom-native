@@ -23,6 +23,12 @@ VIAddVersionKey "LegalCopyright" "Copyright © 2026 CRIS GameRoom. Toate dreptur
 VIAddVersionKey "FileVersion" "${VERSION}"
 
 !define MUI_ABORTWARNING
+
+Function .onInit
+  ExecWait '"$SYSDIR\taskkill.exe" /F /T /IM "${APP_EXE}"'
+  ExecWait '"$SYSDIR\taskkill.exe" /F /T /IM "${UPDATER_EXE}"'
+FunctionEnd
+
 !define MUI_FINISHPAGE_RUN "$INSTDIR\${APP_EXE}"
 !define MUI_FINISHPAGE_RUN_TEXT "Pornește Jocuri și Discuții"
 
