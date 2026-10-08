@@ -1,0 +1,98 @@
+<Window x:Class="CrisGameRoom.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Jocuri și Discuții"
+        Width="980"
+        Height="680"
+        MinWidth="760"
+        MinHeight="520"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="16"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="16"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <DockPanel>
+            <StackPanel DockPanel.Dock="Right"
+                        Orientation="Horizontal">
+                <Button x:Name="LoginButton"
+                        Content="Autentificare"
+                        Padding="18,8"
+                        Margin="8,0,0,0"
+                        Click="LoginButton_Click"/>
+
+                <Button x:Name="LogoutButton"
+                        Content="Deconectare"
+                        Padding="18,8"
+                        Margin="8,0,0,0"
+                        IsEnabled="False"
+                        Click="LogoutButton_Click"/>
+            </StackPanel>
+
+            <StackPanel>
+                <TextBlock Text="Jocuri și Discuții"
+                           FontSize="30"
+                           FontWeight="SemiBold"/>
+
+                <TextBlock x:Name="ConnectionText"
+                           Margin="0,4,0,0"
+                           Text="Se verifică conexiunea..."/>
+            </StackPanel>
+        </DockPanel>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="3*"/>
+            </Grid.ColumnDefinitions>
+
+            <GroupBox Header="Camere"
+                      Grid.Column="0">
+                <ListBox x:Name="RoomsList"
+                         DisplayMemberPath="Name"
+                         SelectionChanged="RoomsList_SelectionChanged"/>
+            </GroupBox>
+
+            <GroupBox Header="Camera selectată"
+                      Grid.Column="2">
+                <Grid Margin="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock x:Name="RoomNameText"
+                               FontSize="24"
+                               FontWeight="SemiBold"/>
+
+                    <TextBlock Grid.Row="1"
+                               x:Name="RoomCodeText"
+                               Margin="0,8,0,0"/>
+
+                    <TextBlock Grid.Row="2"
+                               x:Name="RoomStatusText"
+                               Margin="0,8,0,0"/>
+
+                    <TextBox Grid.Row="3"
+                             x:Name="EventLogText"
+                             Margin="0,16,0,0"
+                             IsReadOnly="True"
+                             TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto"/>
+                </Grid>
+            </GroupBox>
+        </Grid>
+
+        <TextBlock Grid.Row="4"
+                   x:Name="GeneralStatusText"
+                   Margin="0,16,0,0"
+                   TextWrapping="Wrap"/>
+    </Grid>
+</Window>

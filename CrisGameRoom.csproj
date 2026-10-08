@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+
+    <AssemblyName>JocuriSiDiscutii</AssemblyName>
+    <RootNamespace>CrisGameRoom</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+
+    <Platforms>x86;x64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-x86</RuntimeIdentifiers>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+
+    <AssemblyVersion>1.0.1.0</AssemblyVersion>
+    <FileVersion>1.0.1.0</FileVersion>
+    <Version>1.0.1</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SocketIOClient" Version="3.1.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="CrisGameRoomUpdater/**/*.cs" />
+    <None Remove="CrisGameRoomUpdater/**/*.cs" />
+    <Content Remove="CrisGameRoomUpdater/**/*.cs" />
+  </ItemGroup>
+</Project>

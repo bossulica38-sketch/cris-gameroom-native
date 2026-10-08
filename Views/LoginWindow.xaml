@@ -1,0 +1,235 @@
+<Window x:Class="CrisGameRoom.Views.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Jocuri în Camera"
+        Width="560"
+        Height="760"
+        MinWidth="500"
+        MinHeight="700"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="CanMinimize"
+        Background="White"
+        Loaded="LoginWindow_Loaded">
+
+    <Grid Margin="42">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="28"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="18"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="18"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="26"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="18"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="10"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="10"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="10"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="10"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock x:Name="TitleText"
+                   Grid.Row="0"
+                   Text="JOCURI ÎN CAMERA"
+                   FontSize="30"
+                   FontWeight="Bold"
+                   HorizontalAlignment="Center"
+                   Foreground="#111111"
+                   AutomationProperties.Name="Jocuri în Camera"/>
+
+        <TextBlock x:Name="NameLabel"
+                   Grid.Row="2"
+                   Text="Nume"
+                   FontSize="16"
+                   FontWeight="SemiBold"
+                   Foreground="#222222"
+                   AutomationProperties.Name="Nume"/>
+
+        <TextBox x:Name="IdentifierTextBox"
+                 Grid.Row="4"
+                 Height="44"
+                 FontSize="17"
+                 Padding="10,6"
+                 AutomationProperties.Name="Nume"
+                 AutomationProperties.HelpText="Introduceți numele de utilizator sau adresa de e-mail"/>
+
+        <TextBlock x:Name="PasswordLabel"
+                   Grid.Row="6"
+                   Text="Parolă"
+                   FontSize="16"
+                   FontWeight="SemiBold"
+                   Foreground="#222222"
+                   AutomationProperties.Name="Parolă"/>
+
+        <Grid Grid.Row="8">
+            <PasswordBox x:Name="PasswordBox"
+                         Height="44"
+                         FontSize="17"
+                         Padding="10,6"
+                         AutomationProperties.Name="Parolă"
+                         AutomationProperties.HelpText="Introduceți parola"/>
+
+            <TextBox x:Name="VisiblePasswordBox"
+                     Height="44"
+                     FontSize="17"
+                     Padding="10,6"
+                     Visibility="Collapsed"
+                     AutomationProperties.Name="Parolă"/>
+        </Grid>
+
+        <StackPanel Grid.Row="10">
+            <CheckBox x:Name="ShowPasswordCheckBox"
+                      Content="Afișează parola"
+                      FontSize="15"
+                      Margin="0,0,0,10"
+                      AutomationProperties.Name="Afișează parola"
+                      Checked="ShowPasswordCheckBox_Checked"
+                      Unchecked="ShowPasswordCheckBox_Unchecked"/>
+
+            <CheckBox x:Name="RememberPasswordCheckBox"
+                      Content="Reține parola"
+                      FontSize="15"
+                      Margin="0,0,0,10"
+                      AutomationProperties.Name="Reține parola"/>
+
+            <CheckBox x:Name="StartWithWindowsCheckBox"
+                      Content="Pornește aplicația odată cu Windows"
+                      FontSize="15"
+                      AutomationProperties.Name="Pornește aplicația odată cu Windows"/>
+        </StackPanel>
+
+        <Grid Grid.Row="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock x:Name="LanguageLabel"
+                       Grid.Column="0"
+                       Text="Limbă"
+                       FontSize="16"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center"/>
+
+            <ComboBox x:Name="LanguageComboBox"
+                      Grid.Column="2"
+                      Height="42"
+                      FontSize="16"
+                      SelectedIndex="0"
+                      SelectionChanged="LanguageComboBox_SelectionChanged"
+                      AutomationProperties.Name="Limbă">
+                <ComboBoxItem Tag="ro">Română</ComboBoxItem>
+                <ComboBoxItem Tag="en">Engleză</ComboBoxItem>
+                <ComboBoxItem Tag="pt">Portugheză</ComboBoxItem>
+                <ComboBoxItem Tag="tr">Turcă</ComboBoxItem>
+                <ComboBoxItem Tag="it">Italiană</ComboBoxItem>
+                <ComboBoxItem Tag="es">Spaniolă</ComboBoxItem>
+                <ComboBoxItem Tag="de">Germană</ComboBoxItem>
+                <ComboBoxItem Tag="fr">Franceză</ComboBoxItem>
+            </ComboBox>
+        </Grid>
+
+        <Button x:Name="ConnectButton"
+                Grid.Row="14"
+                Height="48"
+                Content="CONECTEAZĂ-TE"
+                FontSize="17"
+                FontWeight="Bold"
+                IsDefault="True"
+                Click="ConnectButton_Click"
+                AutomationProperties.Name="Conectează-te"/>
+
+        <Button x:Name="ForgotPasswordButton"
+                Grid.Row="16"
+                Content="Ai uitat parola?"
+                FontSize="15"
+                HorizontalAlignment="Center"
+                Background="Transparent"
+                BorderThickness="0"
+                Click="ForgotPasswordButton_Click"
+                AutomationProperties.Name="Ai uitat parola?"/>
+
+        <Button x:Name="CreateAccountButton"
+                Grid.Row="18"
+                Content="Creează cont"
+                FontSize="15"
+                HorizontalAlignment="Center"
+                Background="Transparent"
+                BorderThickness="0"
+                Click="CreateAccountButton_Click"
+                AutomationProperties.Name="Creează cont"/>
+
+        <Button x:Name="AboutButton"
+                Grid.Row="20"
+                Content="Despre noi"
+                FontSize="15"
+                HorizontalAlignment="Center"
+                Background="Transparent"
+                BorderThickness="0"
+                Click="AboutButton_Click"
+                AutomationProperties.Name="Despre noi"/>
+
+        <Button x:Name="StatusButton"
+                Grid.Row="22"
+                Content="Status și servicii"
+                FontSize="15"
+                HorizontalAlignment="Center"
+                Background="Transparent"
+                BorderThickness="0"
+                Click="StatusButton_Click"
+                AutomationProperties.Name="Status și servicii"/>
+
+        <Border Grid.Row="24"
+                BorderBrush="#DDDDDD"
+                BorderThickness="1"
+                Padding="10"
+                CornerRadius="5">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock x:Name="ConnectionStatusText"
+                           Grid.Row="0"
+                           Text="Conectare la serviciu..."
+                           FontSize="13"
+                           TextAlignment="Center"
+                           HorizontalAlignment="Center"/>
+
+                <TextBlock x:Name="VersionStatusText"
+                           Grid.Row="1"
+                           Text="Verificare versiune..."
+                           FontSize="13"
+                           TextAlignment="Center"
+                           HorizontalAlignment="Center"
+                           Margin="0,5,0,0"/>
+
+                <Button x:Name="ExitButton"
+                        Grid.Row="2"
+                        Content="Ieșire"
+                        FontSize="14"
+                        HorizontalAlignment="Center"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Click="ExitButton_Click"
+                        Margin="0,5,0,0"
+                        AutomationProperties.Name="Ieșire"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

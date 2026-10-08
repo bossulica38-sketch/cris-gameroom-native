@@ -1,0 +1,10 @@
+bin/
+obj/
+.vs/
+installer/output/*.exe
+installer/assets/*.ico
+*.user
+*.suo
+*.pdb
+*.download
+*.tmp
