@@ -8,3 +8,9 @@ installer/assets/*.ico
 *.pdb
 *.download
 *.tmp
+
+# Build / publish artefacts
+installer/staging/
+publish/
+installer/output/*.exe
+installer/assets/
