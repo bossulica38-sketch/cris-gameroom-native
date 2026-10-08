@@ -26,4 +26,9 @@ Română, engleză, portugheză, turcă, italiană, spaniolă, germană, francez
 
 ## Licență
 
-MIT
+MIT\n\n\
+## Code signing policy
+
+Free code signing provided by SignPath.io, certificate by SignPath Foundation.
+
+The project follows the published CRIS GameRoom [Code signing policy](CODE-SIGNING-POLICY.md).
