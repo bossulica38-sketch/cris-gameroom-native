@@ -139,6 +139,8 @@
                 <ComboBoxItem Tag="es">Spaniolă</ComboBoxItem>
                 <ComboBoxItem Tag="de">Germană</ComboBoxItem>
                 <ComboBoxItem Tag="fr">Franceză</ComboBoxItem>
+                <ComboBoxItem Tag="nl">Neerlandeză</ComboBoxItem>
+                <ComboBoxItem Tag="pl">Poloneză</ComboBoxItem>
             </ComboBox>
         </Grid>
 

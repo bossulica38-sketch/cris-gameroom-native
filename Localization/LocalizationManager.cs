@@ -169,6 +169,52 @@ public static class LocalizationManager
             ["loginError"] = "Authentifizierung fehlgeschlagen.",
             ["updateError"] = "Die Anwendungsversion konnte nicht geprüft werden."
         },
+        ["nl"] = new()
+        {
+            ["title"] = "SPELLEN IN DE KAMER",
+            ["name"] = "Naam",
+            ["password"] = "Wachtwoord",
+            ["showPassword"] = "Wachtwoord tonen",
+            ["rememberPassword"] = "Wachtwoord onthouden",
+            ["startWithWindows"] = "Applicatie starten met Windows",
+            ["language"] = "Taal",
+            ["connect"] = "INLOGGEN",
+            ["forgotPassword"] = "Wachtwoord vergeten?",
+            ["createAccount"] = "Account aanmaken",
+            ["about"] = "Over ons",
+            ["status"] = "Status en diensten",
+            ["exit"] = "Afsluiten",
+            ["connecting"] = "Verbinden met de service...",
+            ["available"] = "Service beschikbaar",
+            ["unavailable"] = "Service niet beschikbaar",
+            ["checkingVersion"] = "Versie controleren...",
+            ["version"] = "Versie",
+            ["loginError"] = "Authenticatie mislukt.",
+            ["updateError"] = "De applicatieversie kon niet worden gecontroleerd."
+        },
+        ["pl"] = new()
+        {
+            ["title"] = "GRY W POKOJU",
+            ["name"] = "Nazwa",
+            ["password"] = "Hasło",
+            ["showPassword"] = "Pokaż hasło",
+            ["rememberPassword"] = "Zapamiętaj hasło",
+            ["startWithWindows"] = "Uruchamiaj aplikację wraz z systemem Windows",
+            ["language"] = "Język",
+            ["connect"] = "ZALOGUJ SIĘ",
+            ["forgotPassword"] = "Nie pamiętasz hasła?",
+            ["createAccount"] = "Utwórz konto",
+            ["about"] = "O nas",
+            ["status"] = "Stan i usługi",
+            ["exit"] = "Wyjście",
+            ["connecting"] = "Łączenie z usługą...",
+            ["available"] = "Usługa dostępna",
+            ["unavailable"] = "Usługa niedostępna",
+            ["checkingVersion"] = "Sprawdzanie wersji...",
+            ["version"] = "Wersja",
+            ["loginError"] = "Uwierzytelnianie nie powiodło się.",
+            ["updateError"] = "Nie można sprawdzić wersji aplikacji."
+        },
         ["fr"] = new()
         {
             ["title"] = "JEUX DANS LA SALLE",

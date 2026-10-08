@@ -15,16 +15,27 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        var logDirectory = System.IO.Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "CrisGameRoom");
+
+        try
+        {
+            System.IO.Directory.CreateDirectory(logDirectory);
+        }
+        catch
+        {
+        }
+
         DispatcherUnhandledException += (_, args) =>
         {
             try
             {
+                System.IO.Directory.CreateDirectory(logDirectory);
                 System.IO.File.AppendAllText(
-                    System.IO.Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                        "CrisGameRoom",
-                        "crash.log"),
-                    $"[{DateTime.Now:O}] {args.Exception}{Environment.NewLine}{Environment.NewLine}");
+                    System.IO.Path.Combine(logDirectory, "crash.log"),
+                    $"[{DateTime.Now:O}] DispatcherUnhandledException{Environment.NewLine}" +
+                    $"{args.Exception}{Environment.NewLine}{Environment.NewLine}");
             }
             catch
             {
@@ -39,18 +50,59 @@ public partial class App : Application
             args.Handled = true;
         };
 
-        var login = new Views.LoginWindow();
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+        {
+            try
+            {
+                System.IO.Directory.CreateDirectory(logDirectory);
+                var exceptionText = args.ExceptionObject?.ToString() ?? "Excepție necunoscută";
+                System.IO.File.AppendAllText(
+                    System.IO.Path.Combine(logDirectory, "crash.log"),
+                    $"[{DateTime.Now:O}] UnhandledException{Environment.NewLine}" +
+                    $"{exceptionText}{Environment.NewLine}{Environment.NewLine}");
+            }
+            catch
+            {
+            }
+        };
+
+        try
+        {
+            var login = new Views.LoginWindow();
         MainWindow = login;
 
-        if (login.ShowDialog() == true)
-        {
-            var window = new Views.MainWindow();
-            MainWindow = window;
-            window.Show();
+            if (login.ShowDialog() == true)
+            {
+                var window = new Views.MainWindow();
+                MainWindow = window;
+                window.Show();
+            }
+            else
+            {
+                Shutdown();
+            }
         }
-        else
+        catch (Exception ex)
         {
-            Shutdown();
+            try
+            {
+                System.IO.Directory.CreateDirectory(logDirectory);
+                System.IO.File.AppendAllText(
+                    System.IO.Path.Combine(logDirectory, "crash.log"),
+                    $"[{DateTime.Now:O}] StartupException{Environment.NewLine}" +
+                    $"{ex}{Environment.NewLine}{Environment.NewLine}");
+            }
+            catch
+            {
+            }
+
+            MessageBox.Show(
+                "Aplicația nu a putut porni. Detaliile au fost salvate în jurnal.",
+                "Jocuri și Discuții",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+
+            Shutdown(1);
         }
     }
 
