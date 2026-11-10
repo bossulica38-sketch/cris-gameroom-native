@@ -1,0 +1,14 @@
+<Window x:Class="CrisGameRoom.Views.RoomMenuWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Meniul tablei" Width="620" Height="650" MinWidth="480" MinHeight="420"
+        WindowStartupLocation="CenterOwner" PreviewKeyDown="Window_PreviewKeyDown">
+    <Grid Margin="20">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <TextBlock Grid.Row="0" Text="Meniul tablei" FontSize="26" FontWeight="Bold" Margin="0,0,0,14"/>
+        <ListBox x:Name="MenuList" Grid.Row="1" FontSize="17" SelectionMode="Single"
+                 AutomationProperties.Name="Meniul tablei. Folosește săgețile și Enter."/>
+        <Button Grid.Row="2" Content="Înapoi la tablă" MinHeight="44" MinWidth="150"
+                HorizontalAlignment="Right" Margin="0,12,0,0" Click="BackButton_Click"/>
+    </Grid>
+</Window>

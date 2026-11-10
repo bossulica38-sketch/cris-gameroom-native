@@ -33,10 +33,6 @@ public partial class RoomTableWindow : Window
         AddBotButton.Content = LocalizationManager.Get("nativeAddBot");
         RemoveBotButton.Content = LocalizationManager.Get("nativeRemoveBot");
         PlayersGroup.Header = LocalizationManager.Get("nativeTablePlayers");
-        ChatGroup.Header = LocalizationManager.Get("nativeTableChat");
-        ChatInputTextBox.ToolTip = LocalizationManager.Get("nativeChatPlaceholder");
-        ChatInputTextBox.Tag = LocalizationManager.Get("nativeChatPlaceholder");
-        SendChatButton.Content = LocalizationManager.Get("nativeChatSend");
         RefreshRoomButton.Content = LocalizationManager.Get("nativeTableRefresh");
         LeaveRoomButton.Content = LocalizationManager.Get("nativeLeaveTable");
         UpdateRoomDisplay();
@@ -52,14 +48,11 @@ public partial class RoomTableWindow : Window
         try
         {
             await App.Realtime.RequestRoomStateAsync();
-            await App.Realtime.ListChatAsync(_room.Code);
         }
         catch
         {
-            LiveStatusText.Text = LocalizationManager.Get("nativeChatHistoryFailed");
         }
 
-        ChatInputTextBox.Focus();
     }
 
     private void RoomTableWindow_Closed(object? sender, EventArgs e)
@@ -73,12 +66,10 @@ public partial class RoomTableWindow : Window
         await RefreshRoomAsync(true);
         try
         {
-            await App.Realtime.ListChatAsync(_room.Code);
             await App.Realtime.RequestRoomStateAsync();
         }
         catch
         {
-            LiveStatusText.Text = LocalizationManager.Get("nativeChatHistoryFailed");
         }
     }
 
@@ -242,8 +233,7 @@ public partial class RoomTableWindow : Window
             _botActionInProgress = false;
             AddBotButton.IsEnabled = BotLevelCombo.Items.Count > 0;
             RemoveBotButton.IsEnabled = true;
-            ChatInputTextBox.Focus();
-        }
+            }
     }
 
     private async void RemoveBotButton_Click(object sender, RoutedEventArgs e)
@@ -282,37 +272,7 @@ public partial class RoomTableWindow : Window
             _botActionInProgress = false;
             AddBotButton.IsEnabled = BotLevelCombo.Items.Count > 0;
             RemoveBotButton.IsEnabled = true;
-            ChatInputTextBox.Focus();
-        }
-    }
-
-    private async void SendChatButton_Click(object sender, RoutedEventArgs e)
-    {
-        await SendChatAsync();
-    }
-
-    private async Task SendChatAsync()
-    {
-        string text = ChatInputTextBox.Text.Trim();
-        if (string.IsNullOrWhiteSpace(text))
-            return;
-
-        SendChatButton.IsEnabled = false;
-        try
-        {
-            await App.Realtime.SendChatAsync(_room.Code, text);
-            ChatInputTextBox.Clear();
-            LiveStatusText.Text = LocalizationManager.Get("nativeChatSent");
-        }
-        catch
-        {
-            LiveStatusText.Text = LocalizationManager.Get("nativeJoinRoomError");
-        }
-        finally
-        {
-            SendChatButton.IsEnabled = true;
-            ChatInputTextBox.Focus();
-        }
+            }
     }
 
     private void Realtime_ServerEvent(string eventName, JsonElement payload)
@@ -337,23 +297,13 @@ public partial class RoomTableWindow : Window
     {
         switch (eventName)
         {
-            case "room:chat:list":
-                ShowChatHistory(payload);
-                break;
-
-            case "room.message_created":
-                var message = FormatChatLine(payload);
-                if (!string.IsNullOrWhiteSpace(message))
-                    AppendChatLine(message);
-                break;
-
             case "room.participant_joined":
-                AppendChatLine(LocalizationManager.Get("nativePlayerJoined"));
+                LiveStatusText.Text = LocalizationManager.Get("nativePlayerJoined");
                 await RefreshRoomAsync(false);
                 break;
 
             case "room.participant_left":
-                AppendChatLine(LocalizationManager.Get("nativePlayerLeft"));
+                LiveStatusText.Text = LocalizationManager.Get("nativePlayerLeft");
                 await RefreshRoomAsync(false);
                 break;
 
@@ -364,177 +314,26 @@ public partial class RoomTableWindow : Window
                 await RefreshRoomAsync(false);
                 break;
 
-            case "room:chat:delete":
-                try
-                {
-                    await App.Realtime.ListChatAsync(_room.Code);
-                }
-                catch
-                {
-                    LiveStatusText.Text = LocalizationManager.Get("nativeChatHistoryFailed");
-                }
-                break;
         }
-    }
-
-    private void ShowChatHistory(JsonElement payload)
-    {
-        var lines = ExtractChatLines(payload);
-
-        if (lines.Count == 0)
-        {
-            if (payload.ValueKind == JsonValueKind.Array && payload.GetArrayLength() == 0)
-            {
-                ChatHistoryTextBox.Clear();
-                AppendChatLine(LocalizationManager.Get("nativeChatHistoryEmpty"));
-            }
-            else
-            {
-                LiveStatusText.Text = LocalizationManager.Get("nativeChatHistoryFailed");
-            }
-
-            return;
-        }
-
-        ChatHistoryTextBox.Clear();
-        foreach (string line in lines)
-            AppendChatLine(line);
-    }
-
-    private static List<string> ExtractChatLines(JsonElement root)
-    {
-        if (root.ValueKind == JsonValueKind.String)
-        {
-            string? value = root.GetString();
-            return string.IsNullOrWhiteSpace(value) ? [] : [value];
-        }
-
-        if (root.ValueKind == JsonValueKind.Array)
-        {
-            var rows = new List<string>();
-            foreach (var item in root.EnumerateArray())
-            {
-                string? line = FormatChatLine(item);
-                if (!string.IsNullOrWhiteSpace(line))
-                    rows.Add(line);
-            }
-            return rows;
-        }
-
-        if (root.ValueKind == JsonValueKind.Object)
-        {
-            foreach (var property in root.EnumerateObject())
-            {
-                if (property.Name.Equals("messages", StringComparison.OrdinalIgnoreCase) ||
-                    property.Name.Equals("items", StringComparison.OrdinalIgnoreCase) ||
-                    property.Name.Equals("data", StringComparison.OrdinalIgnoreCase) ||
-                    property.Name.Equals("results", StringComparison.OrdinalIgnoreCase) ||
-                    property.Name.Equals("history", StringComparison.OrdinalIgnoreCase))
-                {
-                    var found = ExtractChatLines(property.Value);
-                    if (found.Count > 0)
-                        return found;
-                }
-            }
-
-            string? line = FormatChatLine(root);
-            if (!string.IsNullOrWhiteSpace(line))
-                return [line];
-        }
-
-        return [];
-    }
-
-    private static string? FormatChatLine(JsonElement element)
-    {
-        if (element.ValueKind == JsonValueKind.String)
-            return element.GetString();
-
-        if (element.ValueKind != JsonValueKind.Object)
-            return null;
-
-        string? content = ReadText(element, "content", "text", "body", "messageText", "message");
-        if (string.IsNullOrWhiteSpace(content))
-            return null;
-
-        string? author = ReadText(element, "username", "displayName", "senderName", "authorName");
-
-        if (string.IsNullOrWhiteSpace(author))
-            author = ReadNestedText(element, new[] { "sender", "author", "user", "player" },
-                "username", "displayName", "name");
-
-        return string.IsNullOrWhiteSpace(author) ? content : $"{author}: {content}";
-    }
-
-    private static string? ReadText(JsonElement element, params string[] names)
-    {
-        if (element.ValueKind != JsonValueKind.Object)
-            return null;
-
-        foreach (var property in element.EnumerateObject())
-        {
-            if (!names.Any(n => property.Name.Equals(n, StringComparison.OrdinalIgnoreCase)))
-                continue;
-
-            if (property.Value.ValueKind == JsonValueKind.String)
-                return property.Value.GetString();
-
-            if (property.Value.ValueKind == JsonValueKind.Number ||
-                property.Value.ValueKind == JsonValueKind.True ||
-                property.Value.ValueKind == JsonValueKind.False)
-                return property.Value.ToString();
-
-            if (property.Value.ValueKind == JsonValueKind.Object)
-            {
-                string? nested = ReadText(property.Value, "content", "text", "body", "username",
-                    "displayName", "name");
-                if (!string.IsNullOrWhiteSpace(nested))
-                    return nested;
-            }
-        }
-
-        return null;
-    }
-
-    private static string? ReadNestedText(
-        JsonElement element, string[] containers, params string[] names)
-    {
-        if (element.ValueKind != JsonValueKind.Object)
-            return null;
-
-        foreach (var property in element.EnumerateObject())
-        {
-            if (containers.Any(n => property.Name.Equals(n, StringComparison.OrdinalIgnoreCase)))
-            {
-                string? value = ReadText(property.Value, names);
-                if (!string.IsNullOrWhiteSpace(value))
-                    return value;
-            }
-        }
-
-        return null;
-    }
-
-    private void AppendChatLine(string line)
-    {
-        if (string.IsNullOrWhiteSpace(line))
-            return;
-
-        if (ChatHistoryTextBox.Text.Length > 0)
-            ChatHistoryTextBox.AppendText(Environment.NewLine);
-
-        ChatHistoryTextBox.AppendText(line);
-        ChatHistoryTextBox.ScrollToEnd();
     }
 
     private void RoomTableWindow_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        bool typingOrSelectingLevel =
-            ChatInputTextBox.IsKeyboardFocusWithin ||
-            BotLevelCombo.IsKeyboardFocusWithin;
+        if (e.Key == Key.H && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            e.Handled = true;
+            _ = ToggleRoomVisibilityAsync();
+            return;
+        }
 
-        if (!typingOrSelectingLevel &&
-            e.Key == Key.B &&
+        if (e.Key == Key.Escape && Keyboard.Modifiers == ModifierKeys.None)
+        {
+            e.Handled = true;
+            OpenRoomMenu();
+            return;
+        }
+
+        if (e.Key == Key.B &&
             Keyboard.Modifiers == ModifierKeys.None)
         {
             e.Handled = true;
@@ -542,8 +341,7 @@ public partial class RoomTableWindow : Window
             return;
         }
 
-        if (!typingOrSelectingLevel &&
-            e.Key == Key.B &&
+        if (e.Key == Key.B &&
             Keyboard.Modifiers == ModifierKeys.Shift)
         {
             e.Handled = true;
@@ -561,13 +359,43 @@ public partial class RoomTableWindow : Window
             return;
         }
 
-        if (e.Key == Key.Q &&
-            Keyboard.Modifiers == ModifierKeys.None &&
-            !ChatInputTextBox.IsKeyboardFocusWithin)
+
+    }
+
+
+    private async Task ToggleRoomVisibilityAsync()
+    {
+        if (_leaving || _botActionInProgress) return;
+        string next = string.Equals(_room.Visibility, "PRIVATE", StringComparison.OrdinalIgnoreCase)
+            ? "PUBLIC" : "PRIVATE";
+        try
         {
-            e.Handled = true;
-            _ = LeaveTableAsync(true);
+            _room = await App.Api.UpdateRoomAsync(_room.Code, next);
+            UpdateRoomDisplay();
+            LiveStatusText.Text = next == "PRIVATE"
+                ? "Tabla privată. Accesul este restricționat la persoanele autorizate."
+                : "Tabla publică. Poate fi găsită în lista tablelor publice.";
         }
+        catch (Exception ex)
+        {
+            LiveStatusText.Text = "Vizibilitatea tablei nu a putut fi schimbată: " + ex.Message;
+        }
+    }
+
+    private void OpenRoomMenu()
+    {
+        var menu = new RoomMenuWindow(_room) { Owner = this };
+        menu.ShowDialog();
+        if (menu.OptionsRequested)
+            new OptionsWindow { Owner = this }.ShowDialog();
+        else if (menu.LeaveRequested)
+            _ = LeaveTableAsync(true);
+        else if (menu.VisibilityToggleRequested)
+            _ = ToggleRoomVisibilityAsync();
+        else if (menu.AddBotRequested)
+            _ = AddBotToRoomAsync();
+        else if (menu.RemoveBotRequested)
+            _ = RemoveLastBotAsync();
     }
 
     private void LeaveRoomButton_Click(object sender, RoutedEventArgs e)
@@ -636,12 +464,4 @@ public partial class RoomTableWindow : Window
         _ = LeaveTableAsync(true);
     }
 
-    private async void ChatInputTextBox_KeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None)
-        {
-            e.Handled = true;
-            await SendChatAsync();
-        }
-    }
 }

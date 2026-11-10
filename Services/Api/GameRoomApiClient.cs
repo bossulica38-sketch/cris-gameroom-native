@@ -93,6 +93,13 @@ public sealed class GameRoomApiClient
                    "Serverul nu a returnat utilizatorul autentificat.");
     }
 
+    public async Task<List<Game>> GetGamesAsync(CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.GetAsync("games", cancellationToken);
+        await EnsureSuccessAsync(response);
+        return await response.Content.ReadFromJsonAsync<List<Game>>(JsonOptions, cancellationToken) ?? [];
+    }
+
     public async Task<List<Room>> GetRoomsAsync(
         CancellationToken cancellationToken = default)
     {
@@ -185,6 +192,7 @@ public sealed class GameRoomApiClient
     }
 
     public async Task<Room> CreateRoomAsync(
+        string gameId,
         string name,
         string? description = null,
         string? greeting = null,
@@ -195,6 +203,7 @@ public sealed class GameRoomApiClient
     {
         var body = new
         {
+            gameId,
             name,
             description,
             greeting,
@@ -216,6 +225,19 @@ public sealed class GameRoomApiClient
                    cancellationToken)
                ?? throw new InvalidOperationException(
                    "Serverul nu a returnat camera creată.");
+    }
+
+    public async Task<Room> UpdateRoomAsync(
+        string code,
+        string? visibility = null,
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PatchAsJsonAsync(
+            $"rooms/{Uri.EscapeDataString(code.Trim().ToUpperInvariant())}",
+            new { visibility }, JsonOptions, cancellationToken);
+        await EnsureSuccessAsync(response);
+        return await response.Content.ReadFromJsonAsync<Room>(JsonOptions, cancellationToken)
+            ?? throw new InvalidOperationException("Serverul nu a returnat tabla actualizată.");
     }
 
     public async Task<JsonElement> JoinRoomAsync(

@@ -20,9 +20,9 @@
     <Description>Actualizatorul oficial pentru Jocuri și Discuții.</Description>
     <Copyright>Copyright © 2026 Cris GameRoom. Toate drepturile rezervate.</Copyright>
     <Authors>Cris GameRoom</Authors>
-    <AssemblyInformationalVersion>1.0.14</AssemblyInformationalVersion>
-    <AssemblyVersion>1.0.14.0</AssemblyVersion>
-    <FileVersion>1.0.14.0</FileVersion>
-    <Version>1.0.14</Version>
+    <AssemblyInformationalVersion>1.0.15</AssemblyInformationalVersion>
+    <AssemblyVersion>1.0.15.0</AssemblyVersion>
+    <FileVersion>1.0.15.0</FileVersion>
+    <Version>1.0.15</Version>
 </PropertyGroup>
 </Project>

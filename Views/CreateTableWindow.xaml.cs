@@ -12,15 +12,40 @@ public partial class CreateTableWindow : Window
 
     public Room? CreatedRoom { get; private set; }
 
-    public CreateTableWindow()
+    public CreateTableWindow() => InitializeComponent();
+
+    private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        InitializeComponent();
+        await LoadGamesAsync();
+        GamesList.Focus();
+        Keyboard.Focus(GamesList);
     }
 
-    private void Window_Loaded(object sender, RoutedEventArgs e)
+    private async Task LoadGamesAsync()
     {
-        NameInput.Focus();
-        Keyboard.Focus(NameInput);
+        GamesList.IsEnabled = false;
+        CreateButton.IsEnabled = false;
+        StatusText.Text = "Se încarcă jocurile disponibile...";
+        try
+        {
+            var games = await App.Api.GetGamesAsync();
+            GamesList.ItemsSource = games.Where(g =>
+                string.Equals(g.Lifecycle, "ACTIVE", StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(g.Id) && !string.IsNullOrWhiteSpace(g.Name)).ToList();
+            GamesList.IsEnabled = GamesList.Items.Count > 0;
+            StatusText.Text = GamesList.Items.Count == 0
+                ? "Nu există jocuri active disponibile momentan."
+                : "Alege jocul pe care vrei să îl deschizi pe tablă.";
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "Jocurile nu au putut fi încărcate: " + ex.Message;
+        }
+    }
+
+    private void GamesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        CreateButton.IsEnabled = GamesList.SelectedItem is Game && !_creating;
     }
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -28,8 +53,17 @@ public partial class CreateTableWindow : Window
         if (e.Key == Key.H && Keyboard.Modifiers == ModifierKeys.Control)
         {
             _isPrivate = !_isPrivate;
-            VisibilityText.Text = _isPrivate ? "PRIVATĂ" : "PUBLICĂ";
+            VisibilityText.Text = _isPrivate
+                ? "Tabla va fi privată. Ctrl+H schimbă vizibilitatea în publică."
+                : "Tabla va fi publică. Ctrl+H schimbă vizibilitatea în privată.";
             e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Enter && GamesList.IsKeyboardFocusWithin && GamesList.SelectedItem is Game)
+        {
+            e.Handled = true;
+            _ = CreateSelectedGameAsync();
         }
     }
 
@@ -39,48 +73,43 @@ public partial class CreateTableWindow : Window
         Close();
     }
 
-    private async void CreateButton_Click(object sender, RoutedEventArgs e)
+    private async void CreateButton_Click(object sender, RoutedEventArgs e) => await CreateSelectedGameAsync();
+
+    private async Task CreateSelectedGameAsync()
     {
         if (_creating) return;
-
-        string name = NameInput.Text.Trim();
-        if (string.IsNullOrWhiteSpace(name))
+        if (GamesList.SelectedItem is not Game game)
         {
-            ErrorText.Text = "Introdu numele tablei.";
-            NameInput.Focus();
+            StatusText.Text = "Selectează un joc din listă.";
+            GamesList.Focus();
             return;
         }
-
-        int maxPlayers = 4;
-        if (MaxPlayersInput.SelectedItem is ComboBoxItem selected &&
-            int.TryParse(selected.Tag?.ToString(), out int parsed))
-            maxPlayers = parsed;
 
         _creating = true;
         CreateButton.IsEnabled = false;
         CancelButton.IsEnabled = false;
-        ErrorText.Text = string.Empty;
-
+        GamesList.IsEnabled = false;
+        StatusText.Text = "Se creează tabla...";
         try
         {
             CreatedRoom = await App.Api.CreateRoomAsync(
-                name,
-                string.IsNullOrWhiteSpace(DescriptionInput.Text) ? null : DescriptionInput.Text.Trim(),
-                visibility: _isPrivate ? "PRIVATE" : "PUBLIC",
-                maxPlayers: maxPlayers);
+                game.Id, game.Name, visibility: _isPrivate ? "PRIVATE" : "PUBLIC");
 
-            if (_isPrivate && !string.Equals(CreatedRoom.Visibility, "PRIVATE", StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("Serverul nu a confirmat crearea tablei private. Tabla nu va fi deschisă.");
+            if (!string.Equals(CreatedRoom.Visibility, _isPrivate ? "PRIVATE" : "PUBLIC", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Serverul nu a confirmat vizibilitatea aleasă pentru tablă.");
+            if (!string.Equals(CreatedRoom.GameId, game.Id, StringComparison.Ordinal))
+                throw new InvalidOperationException("Serverul nu a asociat jocul selectat cu tabla creată.");
 
             DialogResult = true;
             Close();
         }
         catch (Exception ex)
         {
-            ErrorText.Text = "Tabla nu a putut fi creată: " + ex.Message;
+            StatusText.Text = "Tabla nu a putut fi creată: " + ex.Message;
             CreatedRoom = null;
             _creating = false;
-            CreateButton.IsEnabled = true;
+            GamesList.IsEnabled = true;
+            CreateButton.IsEnabled = GamesList.SelectedItem is Game;
             CancelButton.IsEnabled = true;
         }
     }

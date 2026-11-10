@@ -81,55 +81,15 @@
 
             <GroupBox x:Name="PlayersGroup"
                       Grid.Column="0"
-                      Header="Jucătorii de pe tablă"
-                      Margin="0,0,12,0">
+                      Grid.ColumnSpan="2"
+                      Header="Jucătorii de pe tablă">
                 <ListBox x:Name="PlayersList"
                          Margin="8"
                          AutomationProperties.Name="Jucătorii de pe tablă"
                          AutomationProperties.HelpText="Folosește săgețile pentru a naviga prin lista jucătorilor."/>
             </GroupBox>
 
-            <GroupBox x:Name="ChatGroup"
-                      Grid.Column="1"
-                      Header="Mesaje pentru toți participanții">
-                <Grid Margin="10">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
 
-                    <TextBox x:Name="ChatHistoryTextBox"
-                             Grid.Row="0"
-                             IsReadOnly="True"
-                             AcceptsReturn="True"
-                             TextWrapping="Wrap"
-                             VerticalScrollBarVisibility="Auto"
-                             HorizontalScrollBarVisibility="Disabled"
-                             AutomationProperties.Name="Istoricul mesajelor tablei"
-                             AutomationProperties.HelpText="Afișează mesajele comune primite de la server."/>
-
-                    <TextBox x:Name="ChatInputTextBox"
-                             Grid.Row="1"
-                             Margin="0,10,0,0"
-                             MinHeight="44"
-                             Padding="8"
-                             FontSize="16"
-                             VerticalContentAlignment="Center"
-                             AutomationProperties.Name="Mesaj pentru toți participanții"
-                             KeyDown="ChatInputTextBox_KeyDown"
-                             AutomationProperties.HelpText="Scrie un mesaj comun și apasă Enter pentru a-l trimite."/>
-
-                    <Button x:Name="SendChatButton"
-                            Grid.Row="2"
-                            HorizontalAlignment="Right"
-                            MinWidth="160"
-                            Click="SendChatButton_Click"
-                            AutomationProperties.Name="Trimite mesajul tuturor participanților">
-                        Trimite
-                    </Button>
-                </Grid>
-            </GroupBox>
         </Grid>
 
         <Grid Grid.Row="2" Margin="0,16,0,0">

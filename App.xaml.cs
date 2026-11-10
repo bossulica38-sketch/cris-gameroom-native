@@ -85,7 +85,7 @@ public partial class App : Application
 
             if (loginResult == true)
             {
-                var window = new Views.PlatformShellWindow();
+                var window = new Views.MainWindow();
                 MainWindow = window;
                 ShutdownMode = ShutdownMode.OnMainWindowClose;
                 window.Show();
