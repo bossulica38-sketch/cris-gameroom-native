@@ -5,7 +5,7 @@ Unicode true
 !define APP_NAME "Jocuri și Discuții"
 !define APP_EXE "JocuriSiDiscutii.exe"
 !define UPDATER_EXE "CrisGameRoomUpdater.exe"
-!define VERSION "1.0.13"
+!define VERSION "1.0.14"
 !define PUBLISHER "Cris GameRoom"
 !define INSTALL_DIR "$LOCALAPPDATA\Programs\Cris GameRoom\Jocuri și Discuții (x86)"
 

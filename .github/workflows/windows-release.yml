@@ -154,6 +154,25 @@ jobs:
             Get-FileHash $file -Algorithm SHA256
           }
 
+      - name: Creează pachetul pentru actualizare
+        shell: pwsh
+        run: |
+          $stage = Join-Path $env:GITHUB_WORKSPACE "installer/staging/${{ matrix.rid }}"
+          $updateDir = Join-Path $env:GITHUB_WORKSPACE "installer/update/${{ matrix.rid }}"
+          New-Item -ItemType Directory -Force $updateDir | Out-Null
+          Copy-Item (Join-Path $stage 'JocuriSiDiscutii.exe') $updateDir -Force
+          Compress-Archive -Path (Join-Path $updateDir '*') -DestinationPath (Join-Path $updateDir 'update.zip') -Force
+
+      - name: Publică pachetul de actualizare și actualizatorul
+        uses: actions/upload-artifact@v4
+        with:
+          name: CRIS-Update-${{ matrix.arch }}-${{ github.run_id }}
+          path: |
+            installer/update/${{ matrix.rid }}/update.zip
+            installer/staging/${{ matrix.rid }}/updater/CrisGameRoomUpdater.exe
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Publică artefactul final
         uses: actions/upload-artifact@v4
         with:
