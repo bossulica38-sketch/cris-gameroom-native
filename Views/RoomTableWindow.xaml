@@ -42,35 +42,7 @@
                        FontSize="15"
                        AutomationProperties.LiveSetting="Polite"/>
 
-            <WrapPanel Margin="0,12,0,0" VerticalAlignment="Center">
-                <TextBlock x:Name="BotLevelLabel" Text="Nivel adversar AI"
-                           Margin="0,0,8,0"
-                           VerticalAlignment="Center"
-                           FontSize="15"
-                           AutomationProperties.Name="Nivel adversar AI"/>
-                <ComboBox x:Name="BotLevelCombo"
-                          Width="240"
-                          MinHeight="42"
-                          Margin="0,0,8,0"
-                          Padding="8"
-                          VerticalContentAlignment="Center"
-                          AutomationProperties.Name="Nivel adversar AI"
-                          AutomationProperties.HelpText="Alege nivelul de dificultate încărcat din baza de date."/>
 
-                <Button x:Name="AddBotButton"
-                        Click="AddBotButton_Click"
-                        AutomationProperties.Name="Adaugă un adversar AI. Scurtătură B."
-                        AutomationProperties.HelpText="Adaugă un adversar din nivelul selectat.">
-                    Adaugă adversar AI (B)
-                </Button>
-
-                <Button x:Name="RemoveBotButton"
-                        Click="RemoveBotButton_Click"
-                        AutomationProperties.Name="Elimină ultimul adversar AI. Scurtătură Shift+B."
-                        AutomationProperties.HelpText="Elimină ultimul adversar AI adăugat.">
-                    Elimină ultimul (Shift+B)
-                </Button>
-            </WrapPanel>
         </StackPanel>
 
         <Grid Grid.Row="1">

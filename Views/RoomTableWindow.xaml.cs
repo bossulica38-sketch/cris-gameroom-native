@@ -14,6 +14,8 @@ public partial class RoomTableWindow : Window
     private bool _allowClose;
     private bool _leaving;
     private bool _botActionInProgress;
+    private int _botLevel = 1;
+    private bool _botLevelsAvailable;
 
     public RoomTableWindow(Room room)
     {
@@ -28,10 +30,6 @@ public partial class RoomTableWindow : Window
     private void ApplyLanguage()
     {
         Title = LocalizationManager.Get("nativeTableWindowTitle");
-        BotLevelLabel.Text = LocalizationManager.Get("nativeBotLevel");
-        BotLevelCombo.ToolTip = LocalizationManager.Get("nativeBotLevel");
-        AddBotButton.Content = LocalizationManager.Get("nativeAddBot");
-        RemoveBotButton.Content = LocalizationManager.Get("nativeRemoveBot");
         PlayersGroup.Header = LocalizationManager.Get("nativeTablePlayers");
         RefreshRoomButton.Content = LocalizationManager.Get("nativeTableRefresh");
         LeaveRoomButton.Content = LocalizationManager.Get("nativeLeaveTable");
@@ -168,61 +166,34 @@ public partial class RoomTableWindow : Window
         try
         {
             var levels = await App.Api.GetBotLevelsAsync();
-            BotLevelCombo.ItemsSource = levels;
-            BotLevelCombo.DisplayMemberPath = nameof(OpponentDifficultyLevel.DisplayName);
-            BotLevelCombo.SelectedValuePath = nameof(OpponentDifficultyLevel.Level);
-            BotLevelCombo.SelectedValue = levels.Any(x => x.Level == 1)
-                ? 1
-                : levels.FirstOrDefault()?.Level;
-
-            bool ready = levels.Count > 0;
-            BotLevelCombo.IsEnabled = ready;
-            AddBotButton.IsEnabled = ready;
-
-            if (!ready)
-            {
-                LiveStatusText.Text =
-                    LocalizationManager.Get("nativeBotNoLevels");
-            }
+            var selected = levels.FirstOrDefault(x => x.Level == 1) ?? levels.FirstOrDefault();
+            _botLevelsAvailable = selected is not null;
+            if (selected is not null) _botLevel = selected.Level;
+            if (!_botLevelsAvailable)
+                LiveStatusText.Text = LocalizationManager.Get("nativeBotNoLevels");
         }
         catch (Exception ex)
         {
-            BotLevelCombo.IsEnabled = false;
-            AddBotButton.IsEnabled = false;
-            LiveStatusText.Text =
-                $"Nu s-au putut încărca nivelurile AI din server: {ex.Message}";
+            _botLevelsAvailable = false;
+            LiveStatusText.Text = "Nu s-au putut încărca nivelurile AI din server: " + ex.Message;
         }
-    }
-
-    private async void AddBotButton_Click(object sender, RoutedEventArgs e)
-    {
-        await AddBotToRoomAsync();
     }
 
     private async Task AddBotToRoomAsync()
     {
-        if (_botActionInProgress || _leaving)
-            return;
-
-        if (BotLevelCombo.SelectedValue is not int level)
+        if (_botActionInProgress || _leaving) return;
+        if (!_botLevelsAvailable)
         {
-            LiveStatusText.Text = LocalizationManager.Get("nativeBotSelectLevel");
+            LiveStatusText.Text = LocalizationManager.Get("nativeBotNoLevels");
             return;
         }
 
         _botActionInProgress = true;
-        AddBotButton.IsEnabled = false;
-        RemoveBotButton.IsEnabled = false;
-
         try
         {
-            var bot = await App.Api.AddBotAsync(_room.Code, level);
+            var bot = await App.Api.AddBotAsync(_room.Code, _botLevel);
             await RefreshRoomAsync(false);
-
-            LiveStatusText.Text = string.IsNullOrWhiteSpace(_room.GameId)
-                ? $"{bot.Name}. {LocalizationManager.Get("nativeBotAdded")} Nivel {bot.Level} — {bot.LevelName}. " +
-                  "Atenție: camera nu are un joc asociat în baza de date; mutările automate nu sunt active."
-                : $"{bot.Name}. {LocalizationManager.Get("nativeBotAdded")} Nivel {bot.Level} — {bot.LevelName}.";
+            LiveStatusText.Text = $"{bot.Name}. {LocalizationManager.Get("nativeBotAdded")} Nivel {bot.Level} — {bot.LevelName}.";
         }
         catch (Exception ex)
         {
@@ -231,21 +202,12 @@ public partial class RoomTableWindow : Window
         finally
         {
             _botActionInProgress = false;
-            AddBotButton.IsEnabled = BotLevelCombo.Items.Count > 0;
-            RemoveBotButton.IsEnabled = true;
-            }
-    }
-
-    private async void RemoveBotButton_Click(object sender, RoutedEventArgs e)
-    {
-        await RemoveLastBotAsync();
+        }
     }
 
     private async Task RemoveLastBotAsync()
     {
-        if (_botActionInProgress || _leaving)
-            return;
-
+        if (_botActionInProgress || _leaving) return;
         var bot = (_room.Bots ?? []).LastOrDefault();
         if (bot is null)
         {
@@ -254,9 +216,6 @@ public partial class RoomTableWindow : Window
         }
 
         _botActionInProgress = true;
-        AddBotButton.IsEnabled = false;
-        RemoveBotButton.IsEnabled = false;
-
         try
         {
             await App.Api.RemoveBotAsync(_room.Code, bot.Id);
@@ -270,9 +229,7 @@ public partial class RoomTableWindow : Window
         finally
         {
             _botActionInProgress = false;
-            AddBotButton.IsEnabled = BotLevelCombo.Items.Count > 0;
-            RemoveBotButton.IsEnabled = true;
-            }
+        }
     }
 
     private void Realtime_ServerEvent(string eventName, JsonElement payload)
