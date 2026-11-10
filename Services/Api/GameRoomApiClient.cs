@@ -149,18 +149,14 @@ public sealed class GameRoomApiClient
 
     public async Task<RoomBot> AddBotAsync(
         string code,
-        int level,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(code))
             throw new ArgumentException("Codul tablei este obligatoriu.", nameof(code));
 
-        if (level is < 1 or > 5)
-            throw new ArgumentOutOfRangeException(nameof(level), "Nivelul AI trebuie să fie între 1 și 5.");
-
         using var response = await _http.PostAsJsonAsync(
             $"rooms/{Uri.EscapeDataString(code.Trim().ToUpperInvariant())}/bots",
-            new { level },
+            new { },
             JsonOptions,
             cancellationToken);
 

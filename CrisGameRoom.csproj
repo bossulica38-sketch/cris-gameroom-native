@@ -16,7 +16,7 @@
     <Description>Aplicația nativă oficială Cris GameRoom pentru jocuri și discuții.</Description>
     <Copyright>Copyright © 2026 Cris GameRoom. Toate drepturile rezervate.</Copyright>
     <Authors>Cris GameRoom</Authors>
-    <AssemblyInformationalVersion>1.0.15</AssemblyInformationalVersion>
+    <AssemblyInformationalVersion>1.0.16</AssemblyInformationalVersion>
 
     <Platforms>x86;x64</Platforms>
     <RuntimeIdentifiers>win-x64;win-x86</RuntimeIdentifiers>
@@ -27,9 +27,9 @@
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
 
-    <AssemblyVersion>1.0.15.0</AssemblyVersion>
-    <FileVersion>1.0.15.0</FileVersion>
-    <Version>1.0.15</Version></PropertyGroup>
+    <AssemblyVersion>1.0.16.0</AssemblyVersion>
+    <FileVersion>1.0.16.0</FileVersion>
+    <Version>1.0.16</Version></PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="SocketIOClient" Version="3.1.2" />

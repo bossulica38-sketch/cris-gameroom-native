@@ -14,8 +14,7 @@ public partial class RoomTableWindow : Window
     private bool _allowClose;
     private bool _leaving;
     private bool _botActionInProgress;
-    private int _botLevel = 1;
-    private bool _botLevelsAvailable;
+    private string? _currentUserId;
     private readonly Queue<bool> _pendingBotActions = new();
 
     public RoomTableWindow(Room room)
@@ -41,7 +40,16 @@ public partial class RoomTableWindow : Window
     {
         App.Realtime.ServerEvent += Realtime_ServerEvent;
 
-        await LoadBotLevelsAsync();
+        try
+        {
+            var currentUser = await App.Api.GetCurrentUserAsync();
+            _currentUserId = currentUser.Id;
+        }
+        catch
+        {
+            _currentUserId = null;
+        }
+
         await RefreshRoomAsync(false);
 
         try
@@ -162,24 +170,6 @@ public partial class RoomTableWindow : Window
     }
 
 
-    private async Task LoadBotLevelsAsync()
-    {
-        try
-        {
-            var levels = await App.Api.GetBotLevelsAsync();
-            var selected = levels.FirstOrDefault(x => x.Level == 1) ?? levels.FirstOrDefault();
-            _botLevelsAvailable = selected is not null;
-            if (selected is not null) _botLevel = selected.Level;
-            if (!_botLevelsAvailable)
-                LiveStatusText.Text = LocalizationManager.Get("nativeBotNoLevels");
-        }
-        catch (Exception ex)
-        {
-            _botLevelsAvailable = false;
-            LiveStatusText.Text = "Nu s-au putut încărca nivelurile AI din server: " + ex.Message;
-        }
-    }
-
     private Task AddBotToRoomAsync() => QueueBotActionAsync(true);
 
     private Task RemoveLastBotAsync() => QueueBotActionAsync(false);
@@ -204,14 +194,9 @@ public partial class RoomTableWindow : Window
                 bool add = _pendingBotActions.Dequeue();
                 if (add)
                 {
-                    if (!_botLevelsAvailable)
-                    {
-                        LiveStatusText.Text = LocalizationManager.Get("nativeBotNoLevels");
-                        continue;
-                    }
                     try
                     {
-                        var bot = await App.Api.AddBotAsync(_room.Code, _botLevel);
+                        var bot = await App.Api.AddBotAsync(_room.Code);
                         await RefreshRoomAsync(false);
                         LiveStatusText.Text = $"{bot.Name}. {LocalizationManager.Get("nativeBotAdded")} Nivel {bot.Level} — {bot.LevelName}.";
                     }
@@ -323,19 +308,64 @@ public partial class RoomTableWindow : Window
             return;
         }
 
-        if (e.Key == Key.I &&
-            Keyboard.Modifiers == ModifierKeys.Control)
+        if (e.Key == Key.I && Keyboard.Modifiers == ModifierKeys.Control)
         {
             e.Handled = true;
-            PlayersList.Focus();
-            if (PlayersList.Items.Count > 0)
-                PlayersList.SelectedIndex = 0;
+            AnnounceOpponentsStatus();
+            return;
+        }
+
+        if (e.Key == Key.I && Keyboard.Modifiers == ModifierKeys.None)
+        {
+            e.Handled = true;
+            AnnounceOwnStatus();
             return;
         }
 
 
     }
 
+
+    private void AnnounceOwnStatus()
+    {
+        var me = !string.IsNullOrWhiteSpace(_currentUserId)
+            ? _room.Players.FirstOrDefault(p => string.Equals(p.UserId, _currentUserId, StringComparison.Ordinal))
+            : null;
+        if (me is null)
+        {
+            LiveStatusText.Text = "Situația ta nu este disponibilă momentan.";
+            return;
+        }
+        string name = !string.IsNullOrWhiteSpace(me.DisplayName) ? me.DisplayName : me.Username;
+        LiveStatusText.Text = $"Situația ta: {name}. Scor: {me.Score}.";
+    }
+
+    private void AnnounceOpponentsStatus()
+    {
+        var opponents = (_room.Players ?? [])
+            .Where(p => string.IsNullOrWhiteSpace(_currentUserId) || !string.Equals(p.UserId, _currentUserId, StringComparison.Ordinal))
+            .Select(p =>
+            {
+                string name = !string.IsNullOrWhiteSpace(p.DisplayName) ? p.DisplayName : p.Username;
+                string status = p.Status?.Trim().ToUpperInvariant() switch
+                {
+                    "PLAYING" => "în joc",
+                    "READY" => "pregătit",
+                    "SPECTATOR" => "spectator",
+                    "JOINED" => "conectat",
+                    "DISCONNECTED" => "deconectat",
+                    "LEFT" => "a părăsit tabla",
+                    _ => "status necunoscut"
+                };
+                return $"{name}, {status}, scor {p.Score}";
+            })
+            .Concat((_room.Bots ?? []).Select(b => $"{b.Name}, adversar calculator, nivel {b.LevelName}"))
+            .ToList();
+
+        LiveStatusText.Text = opponents.Count == 0
+            ? "Nu ai adversari pe tablă."
+            : "Adversarii tăi: " + string.Join(". ", opponents) + ".";
+    }
 
     private async Task ToggleRoomVisibilityAsync()
     {
