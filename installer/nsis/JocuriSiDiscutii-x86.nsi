@@ -95,10 +95,10 @@ Section "$(SEC_MAIN)" SEC_MAIN
   SetRegView 32
   SetOutPath "$INSTDIR"
 
-  File "${STAGING}/JocuriSiDiscutii.exe"
+  File "${STAGING}\JocuriSiDiscutii.exe"
 
   SetOutPath "$INSTDIR\updater"
-  File "${STAGING}/updater/CrisGameRoomUpdater.exe"
+  File "${STAGING}\updater\CrisGameRoomUpdater.exe"
 
   SetOutPath "$INSTDIR"
 
