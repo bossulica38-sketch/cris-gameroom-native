@@ -16,6 +16,7 @@ public partial class RoomTableWindow : Window
     private bool _botActionInProgress;
     private int _botLevel = 1;
     private bool _botLevelsAvailable;
+    private readonly Queue<bool> _pendingBotActions = new();
 
     public RoomTableWindow(Room room)
     {
@@ -179,56 +180,72 @@ public partial class RoomTableWindow : Window
         }
     }
 
-    private async Task AddBotToRoomAsync()
-    {
-        if (_botActionInProgress || _leaving) return;
-        if (!_botLevelsAvailable)
-        {
-            LiveStatusText.Text = LocalizationManager.Get("nativeBotNoLevels");
-            return;
-        }
+    private Task AddBotToRoomAsync() => QueueBotActionAsync(true);
 
-        _botActionInProgress = true;
-        try
-        {
-            var bot = await App.Api.AddBotAsync(_room.Code, _botLevel);
-            await RefreshRoomAsync(false);
-            LiveStatusText.Text = $"{bot.Name}. {LocalizationManager.Get("nativeBotAdded")} Nivel {bot.Level} — {bot.LevelName}.";
-        }
-        catch (Exception ex)
-        {
-            LiveStatusText.Text = $"Adăugarea adversarului AI a eșuat: {ex.Message}";
-        }
-        finally
-        {
-            _botActionInProgress = false;
-        }
+    private Task RemoveLastBotAsync() => QueueBotActionAsync(false);
+
+    private Task QueueBotActionAsync(bool add)
+    {
+        if (_leaving) return Task.CompletedTask;
+        _pendingBotActions.Enqueue(add);
+        if (!_botActionInProgress)
+            _ = ProcessBotActionsAsync();
+        return Task.CompletedTask;
     }
 
-    private async Task RemoveLastBotAsync()
+    private async Task ProcessBotActionsAsync()
     {
-        if (_botActionInProgress || _leaving) return;
-        var bot = (_room.Bots ?? []).LastOrDefault();
-        if (bot is null)
-        {
-            LiveStatusText.Text = LocalizationManager.Get("nativeBotNone");
-            return;
-        }
-
+        if (_botActionInProgress) return;
         _botActionInProgress = true;
         try
         {
-            await App.Api.RemoveBotAsync(_room.Code, bot.Id);
-            await RefreshRoomAsync(false);
-            LiveStatusText.Text = $"{bot.Name}. {LocalizationManager.Get("nativeBotRemoved")}";
-        }
-        catch (Exception ex)
-        {
-            LiveStatusText.Text = $"Eliminarea adversarului AI a eșuat: {ex.Message}";
+            while (_pendingBotActions.Count > 0 && !_leaving)
+            {
+                bool add = _pendingBotActions.Dequeue();
+                if (add)
+                {
+                    if (!_botLevelsAvailable)
+                    {
+                        LiveStatusText.Text = LocalizationManager.Get("nativeBotNoLevels");
+                        continue;
+                    }
+                    try
+                    {
+                        var bot = await App.Api.AddBotAsync(_room.Code, _botLevel);
+                        await RefreshRoomAsync(false);
+                        LiveStatusText.Text = $"{bot.Name}. {LocalizationManager.Get("nativeBotAdded")} Nivel {bot.Level} — {bot.LevelName}.";
+                    }
+                    catch (Exception ex)
+                    {
+                        LiveStatusText.Text = $"Adăugarea adversarului AI a eșuat: {ex.Message}";
+                    }
+                }
+                else
+                {
+                    var bot = (_room.Bots ?? []).LastOrDefault();
+                    if (bot is null)
+                    {
+                        LiveStatusText.Text = LocalizationManager.Get("nativeBotNone");
+                        continue;
+                    }
+                    try
+                    {
+                        await App.Api.RemoveBotAsync(_room.Code, bot.Id);
+                        await RefreshRoomAsync(false);
+                        LiveStatusText.Text = $"{bot.Name}. {LocalizationManager.Get("nativeBotRemoved")}";
+                    }
+                    catch (Exception ex)
+                    {
+                        LiveStatusText.Text = $"Eliminarea adversarului AI a eșuat: {ex.Message}";
+                    }
+                }
+            }
         }
         finally
         {
             _botActionInProgress = false;
+            if (_pendingBotActions.Count > 0 && !_leaving)
+                _ = ProcessBotActionsAsync();
         }
     }
 
