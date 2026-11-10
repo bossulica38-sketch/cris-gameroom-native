@@ -8,11 +8,9 @@ Unicode true
 !define VERSION "1.0.9"
 !define PUBLISHER "Cris GameRoom"
 !define INSTALL_DIR "$LOCALAPPDATA\Programs\Cris GameRoom\Jocuri și Discuții (x86)"
-!getfullpath ROOT "${__FILEDIR__}\..\.."
-!define STAGING "${ROOT}\installer\staging\win-x86"
 
 Name "${APP_NAME}"
-OutFile "${ROOT}\installer\output\JocuriSiDiscutii-Setup-x86.exe"
+OutFile "${OUTFILE}"
 InstallDir "${INSTALL_DIR}"
 InstallDirRegKey HKCU "Software\Cris GameRoom\Jocuri și Discuții" "InstallDir"
 RequestExecutionLevel user

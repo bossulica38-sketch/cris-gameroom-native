@@ -71,11 +71,12 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force installer/output | Out-Null
-          if ('${{ matrix.arch }}' -eq 'x64') {
-            & "C:\Program Files (x86)\NSIS\makensis.exe" "$env:GITHUB_WORKSPACE/installer/nsis/JocuriSiDiscutii-x64.nsi"
-          } else {
-            & "C:\Program Files (x86)\NSIS\makensis.exe" "$env:GITHUB_WORKSPACE/installer/nsis/JocuriSiDiscutii-x86.nsi"
-          }
+          $stage = Join-Path $env:GITHUB_WORKSPACE "installer/staging/${{ matrix.rid }}"
+          $output = Join-Path $env:GITHUB_WORKSPACE "installer/output/JocuriSiDiscutii-Setup-${{ matrix.arch }}.exe"
+          New-Item -ItemType Directory -Force (Split-Path $output) | Out-Null
+          $script = if ('${{ matrix.arch }}' -eq 'x64') { Join-Path $env:GITHUB_WORKSPACE "installer/nsis/JocuriSiDiscutii-x64.nsi" } else { Join-Path $env:GITHUB_WORKSPACE "installer/nsis/JocuriSiDiscutii-x86.nsi" }
+          & "C:\Program Files (x86)\NSIS\makensis.exe" "/DSTAGING=$stage" "/DOUTFILE=$output" $script
+          if ($LASTEXITCODE -ne 0) { throw "NSIS a eșuat cu codul $LASTEXITCODE" }
 
       - name: Verifică pachetul
         shell: pwsh
