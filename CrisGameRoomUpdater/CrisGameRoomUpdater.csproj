@@ -13,7 +13,15 @@
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
-    <Version>1.0.0</Version>
       <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Company>Cris GameRoom</Company>
+    <Product>Cris GameRoom Actualizator</Product>
+    <Description>Actualizatorul oficial pentru Jocuri și Discuții.</Description>
+    <Copyright>Copyright © 2026 Cris GameRoom. Toate drepturile rezervate.</Copyright>
+    <Authors>Cris GameRoom</Authors>
+    <AssemblyInformationalVersion>1.0.2</AssemblyInformationalVersion>
+    <AssemblyVersion>1.0.2.0</AssemblyVersion>
+    <FileVersion>1.0.2.0</FileVersion>
+    <Version>1.0.2</Version>
 </PropertyGroup>
 </Project>

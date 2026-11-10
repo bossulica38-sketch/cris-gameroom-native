@@ -1,4 +1,5 @@
 using System.Windows;
+using CrisGameRoom.Localization;
 using CrisGameRoom.Services.Api;
 using CrisGameRoom.Services.Authentication;
 using CrisGameRoom.Services.Realtime;
@@ -14,6 +15,7 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        LocalizationManager.ApplyCurrentCulture();
 
         var logDirectory = System.IO.Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -68,14 +70,20 @@ public partial class App : Application
 
         try
         {
-            var login = new Views.LoginWindow();
-        MainWindow = login;
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
-            if (login.ShowDialog() == true)
+            var login = new Views.LoginWindow();
+            MainWindow = login;
+
+            var loginResult = login.ShowDialog();
+
+            if (loginResult == true)
             {
-                var window = new Views.MainWindow();
+                var window = new Views.PlatformShellWindow();
                 MainWindow = window;
+                ShutdownMode = ShutdownMode.OnMainWindowClose;
                 window.Show();
+                window.Activate();
             }
             else
             {

@@ -39,6 +39,9 @@ public sealed class Room
 
     [JsonPropertyName("players")]
     public List<RoomPlayer> Players { get; set; } = [];
+
+    [JsonPropertyName("bots")]
+    public List<RoomBot> Bots { get; set; } = [];
 }
 
 public sealed class RoomPlayer

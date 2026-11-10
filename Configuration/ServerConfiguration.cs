@@ -5,6 +5,7 @@ public static class ServerConfiguration
     public const string WebBaseUrl = "https://criswebhost.ro/";
     public const string ApiBaseUrl = "https://criswebhost.ro/api/";
     public const string RealtimeBaseUrl = "https://criswebhost.ro";
+    public const string RealtimePath = "/api/socket.io";
 
     public const string SessionCookieName = "cris_gameroom_session";
 

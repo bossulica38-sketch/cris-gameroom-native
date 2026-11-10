@@ -1,194 +1,136 @@
 using System;
+using System.IO;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Input;
-using CrisGameRoom.Localization;
+using CrisGameRoom.Services.Security;
 using CrisGameRoom.Services.Updates;
-
+using CrisGameRoom.Localization;
+using System.Windows.Controls;
 namespace CrisGameRoom.Views;
-
 public partial class LoginWindow : Window
 {
-    private bool _loadingLanguage;
-
+    private Task<bool>? _updateGateTask;
+    private bool _isAuthenticating;
+    private bool _preferencesLoaded;
+    private sealed class LoginPreferences { public bool AutoLogin { get; set; } = true; }
+    private static string PreferencesPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CrisGameRoom", "login-preferences.json");
     public LoginWindow()
     {
         InitializeComponent();
+        LanguageComboBox.ItemsSource = LocalizationManager.AvailableLanguages
+            .Select(x => new LanguageChoice(x.Code, x.Name)).ToArray();
+        LanguageComboBox.SelectedValue = LocalizationManager.CurrentLanguage;
+        ApplyLanguage();
+        LoadPreferences();
     }
 
-    private async void LoginWindow_Loaded(object sender, RoutedEventArgs e)
+    private sealed record LanguageChoice(string Code, string Name);
+
+    private void ApplyLanguage()
     {
-        IdentifierTextBox.Focus();
-        await CheckServiceAndVersionAsync();
-    }
-
-    private async Task CheckServiceAndVersionAsync()
-    {
-        ConnectionStatusText.Text = LocalizationManager.Get("connecting");
-        VersionStatusText.Text = LocalizationManager.Get("checkingVersion");
-
-        try
-        {
-            var currentUser = await App.Api.GetCurrentUserAsync();
-            ConnectionStatusText.Text = LocalizationManager.Get("available");
-        }
-        catch
-        {
-            ConnectionStatusText.Text = LocalizationManager.Get("available");
-        }
-
-        try
-        {
-            await UpdateGate.EnsureCurrentAsync(this);
-            VersionStatusText.Text =
-                $"{LocalizationManager.Get("version")} {GetType().Assembly.GetName().Version?.ToString(3) ?? "1.0.0"}";
-        }
-        catch
-        {
-            VersionStatusText.Text = LocalizationManager.Get("updateError");
-        }
-    }
-
-    private void ShowPasswordCheckBox_Checked(object sender, RoutedEventArgs e)
-    {
-        VisiblePasswordBox.Text = PasswordBox.Password;
-        PasswordBox.Visibility = Visibility.Collapsed;
-        VisiblePasswordBox.Visibility = Visibility.Visible;
-        VisiblePasswordBox.Focus();
-        VisiblePasswordBox.CaretIndex = VisiblePasswordBox.Text.Length;
-    }
-
-    private void ShowPasswordCheckBox_Unchecked(object sender, RoutedEventArgs e)
-    {
-        PasswordBox.Password = VisiblePasswordBox.Text;
-        VisiblePasswordBox.Visibility = Visibility.Collapsed;
-        PasswordBox.Visibility = Visibility.Visible;
-        PasswordBox.Focus();
+        Title = LocalizationManager.Get("nativeTitle");
+        LanguageLabel.Text = LocalizationManager.Get("nativeLanguage");
+        IdentifierLabel.Text = LocalizationManager.Get("nativeName");
+        PasswordLabel.Text = LocalizationManager.Get("nativePassword");
+        IdentifierTextBox.SetCurrentValue(AutomationProperties.NameProperty, LocalizationManager.Get("nativeName"));
+        PasswordBox.SetCurrentValue(AutomationProperties.NameProperty, LocalizationManager.Get("nativePassword"));
+        ConnectButton.Content = LocalizationManager.Get("nativeConnect");
+        ForgotPasswordButton.Content = LocalizationManager.Get("nativeForgotPassword");
+        CreateAccountButton.Content = LocalizationManager.Get("nativeCreateAccount");
+        AboutButton.Content = LocalizationManager.Get("nativeAbout");
+        StatusButton.Content = LocalizationManager.Get("nativeStatus");
+        ExitButton.Content = LocalizationManager.Get("nativeExit");
+        foreach (var button in new[] { ConnectButton, ForgotPasswordButton, CreateAccountButton, AboutButton, StatusButton, ExitButton })
+            System.Windows.Automation.AutomationProperties.SetName(button, button.Content?.ToString() ?? "");
+        RememberCredentialsCheckBox.Content = LocalizationManager.Get("nativeRememberCredentials");
+        AutoLoginCheckBox.Content = LocalizationManager.Get("nativeAutoLogin");
+        System.Windows.Automation.AutomationProperties.SetName(RememberCredentialsCheckBox, LocalizationManager.Get("nativeRememberCredentials"));
+        System.Windows.Automation.AutomationProperties.SetName(AutoLoginCheckBox, LocalizationManager.Get("nativeAutoLogin"));
+        System.Windows.Automation.AutomationProperties.SetName(LanguageComboBox, LocalizationManager.Get("nativeLanguage"));
+        IdentifierTextBox.ToolTip = LocalizationManager.Get("nativeName");
+        PasswordBox.ToolTip = LocalizationManager.Get("nativePassword");
     }
 
     private void LanguageComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_loadingLanguage || LanguageComboBox.SelectedItem is not ComboBoxItem item)
-            return;
-
-        var code = item.Tag?.ToString();
-        if (string.IsNullOrWhiteSpace(code))
-            return;
-
-        _loadingLanguage = true;
-        LocalizationManager.SetLanguage(code);
-        ApplyLanguage();
-        _loadingLanguage = false;
-    }
-
-    private void ApplyLanguage()
-    {
-        TitleText.Text = LocalizationManager.Get("title");
-        Title = LocalizationManager.Get("title");
-
-        NameLabel.Text = LocalizationManager.Get("name");
-        PasswordLabel.Text = LocalizationManager.Get("password");
-
-        ShowPasswordCheckBox.Content = LocalizationManager.Get("showPassword");
-        RememberPasswordCheckBox.Content = LocalizationManager.Get("rememberPassword");
-        StartWithWindowsCheckBox.Content = LocalizationManager.Get("startWithWindows");
-
-        LanguageLabel.Text = LocalizationManager.Get("language");
-        ConnectButton.Content = LocalizationManager.Get("connect");
-        ForgotPasswordButton.Content = LocalizationManager.Get("forgotPassword");
-        CreateAccountButton.Content = LocalizationManager.Get("createAccount");
-        AboutButton.Content = LocalizationManager.Get("about");
-        StatusButton.Content = LocalizationManager.Get("status");
-        ExitButton.Content = LocalizationManager.Get("exit");
-    }
-
-    private async void ConnectButton_Click(object sender, RoutedEventArgs e)
-    {
-        var identifier = IdentifierTextBox.Text.Trim();
-        var password = PasswordBox.Password;
-
-        if (ShowPasswordCheckBox.IsChecked == true)
-            password = VisiblePasswordBox.Text;
-
-        if (string.IsNullOrWhiteSpace(identifier) ||
-            string.IsNullOrWhiteSpace(password))
+        if (LanguageComboBox.SelectedValue is string code && code != LocalizationManager.CurrentLanguage)
         {
-            MessageBox.Show(
-                LocalizationManager.Get("loginError"),
-                LocalizationManager.Get("title"),
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
+            LocalizationManager.SetLanguage(code);
+            ApplyLanguage();
+        }
+    }
+    private void LoadPreferences()
+    {
+        try { if (File.Exists(PreferencesPath)) { var settings = JsonSerializer.Deserialize<LoginPreferences>(File.ReadAllText(PreferencesPath)); AutoLoginCheckBox.IsChecked = settings?.AutoLogin ?? true; } }
+        catch { AutoLoginCheckBox.IsChecked = true; }
+        _preferencesLoaded = true;
+    }
+    private void SavePreferences()
+    {
+        try { Directory.CreateDirectory(Path.GetDirectoryName(PreferencesPath)!); File.WriteAllText(PreferencesPath, JsonSerializer.Serialize(new LoginPreferences { AutoLogin = AutoLoginCheckBox.IsChecked == true })); }
+        catch { }
+    }
+    private void AutoLoginCheckBox_Changed(object sender, RoutedEventArgs e) { if (_preferencesLoaded) SavePreferences(); }
+    private async void LoginWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (!await EnsureUpdateGateAsync())
+        {
+            ConnectButton.IsEnabled = false;
             return;
         }
 
+        if (CredentialStore.TryLoad(out string savedIdentifier, out string savedPassword))
+        {
+            IdentifierTextBox.Text = savedIdentifier;
+            PasswordBox.Password = savedPassword;
+            RememberCredentialsCheckBox.IsChecked = true;
+            if (AutoLoginCheckBox.IsChecked == true) await AuthenticateAsync(savedIdentifier, savedPassword);
+            else IdentifierTextBox.Focus();
+        }
+        else IdentifierTextBox.Focus();
+    }
+    private Task<bool> EnsureUpdateGateAsync() => _updateGateTask ??= UpdateGate.EnsureCurrentAsync(this);
+    private async Task AuthenticateAsync(string identifier, string password)
+    {
+        if (_isAuthenticating) return;
+        if (string.IsNullOrWhiteSpace(identifier) || string.IsNullOrWhiteSpace(password)) { IdentifierTextBox.Focus(); return; }
+        _isAuthenticating = true;
         ConnectButton.IsEnabled = false;
-        ConnectionStatusText.Text = LocalizationManager.Get("connecting");
-
         try
         {
+            if (!await EnsureUpdateGateAsync())
+            {
+                MessageBox.Show("Nu s-a putut verifica versiunea aplicației. Conectarea a fost oprită.", "Jocuri și Discuții", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
             var result = await App.Api.LoginAsync(identifier, password);
-
-            if (result is null || string.IsNullOrWhiteSpace(result.AccessToken))
-                throw new InvalidOperationException("Authentication returned no access token.");
-
+            if (result is null || string.IsNullOrWhiteSpace(result.AccessToken)) throw new InvalidOperationException("Autentificarea nu a returnat un jeton valid.");
             await App.Sessions.SaveAsync(result);
-
-            ConnectionStatusText.Text = LocalizationManager.Get("available");
-
+            if (RememberCredentialsCheckBox.IsChecked == true) CredentialStore.Save(identifier, password);
+            else CredentialStore.Delete();
             DialogResult = true;
             Close();
         }
         catch
         {
-            ConnectionStatusText.Text = LocalizationManager.Get("unavailable");
-
-            MessageBox.Show(
-                LocalizationManager.Get("loginError"),
-                LocalizationManager.Get("title"),
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
+            MessageBox.Show("Nu am putut să te conectez. Verifică numele de utilizator, parola și conexiunea la internet.", "Autentificare nereușită", MessageBoxButton.OK, MessageBoxImage.Error);
+            PasswordBox.Focus();
         }
-        finally
-        {
-            ConnectButton.IsEnabled = true;
-        }
+        finally { ConnectButton.IsEnabled = true; _isAuthenticating = false; }
     }
-
-    private void ForgotPasswordButton_Click(object sender, RoutedEventArgs e)
+    private async void ConnectButton_Click(object sender, RoutedEventArgs e) => await AuthenticateAsync(IdentifierTextBox.Text.Trim(), PasswordBox.Password);
+    private void ForgotPasswordButton_Click(object sender, RoutedEventArgs e) => OpenWebsite("https://criswebhost.ro/reset-password", "Recuperarea parolei nu este disponibilă momentan.");
+    private void CreateAccountButton_Click(object sender, RoutedEventArgs e) => OpenWebsite("https://criswebhost.ro/", "Pagina de creare a contului nu este disponibilă momentan.");
+    private static void OpenWebsite(string url, string errorMessage)
     {
-        MessageBox.Show(
-            LocalizationManager.Get("forgotPassword"),
-            LocalizationManager.Get("title"),
-            MessageBoxButton.OK,
-            MessageBoxImage.Information);
+        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = url, UseShellExecute = true }); }
+        catch { MessageBox.Show(errorMessage, "Jocuri și Discuții", MessageBoxButton.OK, MessageBoxImage.Warning); }
     }
-
-    private void CreateAccountButton_Click(object sender, RoutedEventArgs e)
-    {
-        MessageBox.Show(
-            LocalizationManager.Get("createAccount"),
-            LocalizationManager.Get("title"),
-            MessageBoxButton.OK,
-            MessageBoxImage.Information);
-    }
-
     private void AboutButton_Click(object sender, RoutedEventArgs e)
     {
-        MessageBox.Show(
-            "Cris GameRoom",
-            LocalizationManager.Get("about"),
-            MessageBoxButton.OK,
-            MessageBoxImage.Information);
+        MessageBox.Show("CRIS GameRoom — aplicație pentru jocuri și discuții, construită cu accent pe accesibilitate și utilizarea cu cititoare de ecran.\n\nSite oficial: https://criswebhost.ro", "Despre", MessageBoxButton.OK, MessageBoxImage.Information);
     }
-
-    private void StatusButton_Click(object sender, RoutedEventArgs e)
-    {
-        _ = CheckServiceAndVersionAsync();
-    }
-
-    private void ExitButton_Click(object sender, RoutedEventArgs e)
-    {
-        Application.Current.Shutdown();
-    }
+    private void StatusButton_Click(object sender, RoutedEventArgs e) { var window = new ServiceStatusWindow { Owner = this }; window.ShowDialog(); }
+    private void ExitButton_Click(object sender, RoutedEventArgs e) => Application.Current.Shutdown();
 }

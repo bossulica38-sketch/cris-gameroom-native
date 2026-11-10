@@ -1,258 +1,177 @@
+using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Threading;
+using System.IO;
+using System.Reflection;
+using System.Text.Json;
 
 namespace CrisGameRoom.Localization;
 
 public static class LocalizationManager
 {
-    public static string CurrentLanguage { get; private set; } = "ro";
+    private static readonly Dictionary<string, Dictionary<string, string>> Languages = LoadLanguages();
 
-    private static readonly Dictionary<string, Dictionary<string, string>> Languages = new()
+    private static readonly Dictionary<string, string> NativeAliases = new(StringComparer.Ordinal)
     {
-        ["ro"] = new()
-        {
-            ["title"] = "JOCURI ÎN CAMERA",
-            ["name"] = "Nume",
-            ["password"] = "Parolă",
-            ["showPassword"] = "Afișează parola",
-            ["rememberPassword"] = "Reține parola",
-            ["startWithWindows"] = "Pornește aplicația odată cu Windows",
-            ["language"] = "Limbă",
-            ["connect"] = "CONECTEAZĂ-TE",
-            ["forgotPassword"] = "Ai uitat parola?",
-            ["createAccount"] = "Creează cont",
-            ["about"] = "Despre noi",
-            ["status"] = "Status și servicii",
-            ["exit"] = "Ieșire",
-            ["connecting"] = "Conectare la serviciu...",
-            ["available"] = "Serviciu disponibil",
-            ["unavailable"] = "Serviciu indisponibil",
-            ["checkingVersion"] = "Verificare versiune...",
-            ["version"] = "Versiune",
-            ["loginError"] = "Autentificarea a eșuat.",
-            ["updateError"] = "Nu s-a putut verifica versiunea aplicației."
-        },
-        ["en"] = new()
-        {
-            ["title"] = "GAMES IN THE ROOM",
-            ["name"] = "Name",
-            ["password"] = "Password",
-            ["showPassword"] = "Show password",
-            ["rememberPassword"] = "Remember password",
-            ["startWithWindows"] = "Start application with Windows",
-            ["language"] = "Language",
-            ["connect"] = "SIGN IN",
-            ["forgotPassword"] = "Forgot password?",
-            ["createAccount"] = "Create account",
-            ["about"] = "About us",
-            ["status"] = "Status and services",
-            ["exit"] = "Exit",
-            ["connecting"] = "Connecting to service...",
-            ["available"] = "Service available",
-            ["unavailable"] = "Service unavailable",
-            ["checkingVersion"] = "Checking version...",
-            ["version"] = "Version",
-            ["loginError"] = "Authentication failed.",
-            ["updateError"] = "The application version could not be checked."
-        },
-        ["pt"] = new()
-        {
-            ["title"] = "JOGOS NA SALA",
-            ["name"] = "Nome",
-            ["password"] = "Palavra-passe",
-            ["showPassword"] = "Mostrar palavra-passe",
-            ["rememberPassword"] = "Guardar palavra-passe",
-            ["startWithWindows"] = "Iniciar aplicação com o Windows",
-            ["language"] = "Idioma",
-            ["connect"] = "INICIAR SESSÃO",
-            ["forgotPassword"] = "Esqueceu a palavra-passe?",
-            ["createAccount"] = "Criar conta",
-            ["about"] = "Sobre nós",
-            ["status"] = "Estado e serviços",
-            ["exit"] = "Sair",
-            ["connecting"] = "A ligar ao serviço...",
-            ["available"] = "Serviço disponível",
-            ["unavailable"] = "Serviço indisponível",
-            ["checkingVersion"] = "A verificar a versão...",
-            ["version"] = "Versão",
-            ["loginError"] = "A autenticação falhou.",
-            ["updateError"] = "Não foi possível verificar a versão da aplicação."
-        },
-        ["tr"] = new()
-        {
-            ["title"] = "ODA OYUNLARI",
-            ["name"] = "Ad",
-            ["password"] = "Şifre",
-            ["showPassword"] = "Şifreyi göster",
-            ["rememberPassword"] = "Şifreyi hatırla",
-            ["startWithWindows"] = "Uygulamayı Windows ile başlat",
-            ["language"] = "Dil",
-            ["connect"] = "GİRİŞ YAP",
-            ["forgotPassword"] = "Şifrenizi mi unuttunuz?",
-            ["createAccount"] = "Hesap oluştur",
-            ["about"] = "Hakkımızda",
-            ["status"] = "Durum ve hizmetler",
-            ["exit"] = "Çıkış",
-            ["connecting"] = "Hizmete bağlanılıyor...",
-            ["available"] = "Hizmet kullanılabilir",
-            ["unavailable"] = "Hizmet kullanılamıyor",
-            ["checkingVersion"] = "Sürüm kontrol ediliyor...",
-            ["version"] = "Sürüm",
-            ["loginError"] = "Kimlik doğrulama başarısız.",
-            ["updateError"] = "Uygulama sürümü kontrol edilemedi."
-        },
-        ["it"] = new()
-        {
-            ["title"] = "GIOCHI NELLA STANZA",
-            ["name"] = "Nome",
-            ["password"] = "Password",
-            ["showPassword"] = "Mostra password",
-            ["rememberPassword"] = "Ricorda password",
-            ["startWithWindows"] = "Avvia l'applicazione con Windows",
-            ["language"] = "Lingua",
-            ["connect"] = "ACCEDI",
-            ["forgotPassword"] = "Password dimenticata?",
-            ["createAccount"] = "Crea account",
-            ["about"] = "Chi siamo",
-            ["status"] = "Stato e servizi",
-            ["exit"] = "Esci",
-            ["connecting"] = "Connessione al servizio...",
-            ["available"] = "Servizio disponibile",
-            ["unavailable"] = "Servizio non disponibile",
-            ["checkingVersion"] = "Controllo della versione...",
-            ["version"] = "Versione",
-            ["loginError"] = "Autenticazione non riuscita.",
-            ["updateError"] = "Impossibile verificare la versione dell'applicazione."
-        },
-        ["es"] = new()
-        {
-            ["title"] = "JUEGOS EN LA SALA",
-            ["name"] = "Nombre",
-            ["password"] = "Contraseña",
-            ["showPassword"] = "Mostrar contraseña",
-            ["rememberPassword"] = "Recordar contraseña",
-            ["startWithWindows"] = "Iniciar la aplicación con Windows",
-            ["language"] = "Idioma",
-            ["connect"] = "INICIAR SESIÓN",
-            ["forgotPassword"] = "¿Has olvidado la contraseña?",
-            ["createAccount"] = "Crear cuenta",
-            ["about"] = "Sobre nosotros",
-            ["status"] = "Estado y servicios",
-            ["exit"] = "Salir",
-            ["connecting"] = "Conectando al servicio...",
-            ["available"] = "Servicio disponible",
-            ["unavailable"] = "Servicio no disponible",
-            ["checkingVersion"] = "Comprobando versión...",
-            ["version"] = "Versión",
-            ["loginError"] = "La autenticación ha fallado.",
-            ["updateError"] = "No se pudo comprobar la versión de la aplicación."
-        },
-        ["de"] = new()
-        {
-            ["title"] = "SPIELE IM RAUM",
-            ["name"] = "Name",
-            ["password"] = "Passwort",
-            ["showPassword"] = "Passwort anzeigen",
-            ["rememberPassword"] = "Passwort speichern",
-            ["startWithWindows"] = "Anwendung mit Windows starten",
-            ["language"] = "Sprache",
-            ["connect"] = "ANMELDEN",
-            ["forgotPassword"] = "Passwort vergessen?",
-            ["createAccount"] = "Konto erstellen",
-            ["about"] = "Über uns",
-            ["status"] = "Status und Dienste",
-            ["exit"] = "Beenden",
-            ["connecting"] = "Verbindung zum Dienst...",
-            ["available"] = "Dienst verfügbar",
-            ["unavailable"] = "Dienst nicht verfügbar",
-            ["checkingVersion"] = "Version wird geprüft...",
-            ["version"] = "Version",
-            ["loginError"] = "Authentifizierung fehlgeschlagen.",
-            ["updateError"] = "Die Anwendungsversion konnte nicht geprüft werden."
-        },
-        ["nl"] = new()
-        {
-            ["title"] = "SPELLEN IN DE KAMER",
-            ["name"] = "Naam",
-            ["password"] = "Wachtwoord",
-            ["showPassword"] = "Wachtwoord tonen",
-            ["rememberPassword"] = "Wachtwoord onthouden",
-            ["startWithWindows"] = "Applicatie starten met Windows",
-            ["language"] = "Taal",
-            ["connect"] = "INLOGGEN",
-            ["forgotPassword"] = "Wachtwoord vergeten?",
-            ["createAccount"] = "Account aanmaken",
-            ["about"] = "Over ons",
-            ["status"] = "Status en diensten",
-            ["exit"] = "Afsluiten",
-            ["connecting"] = "Verbinden met de service...",
-            ["available"] = "Service beschikbaar",
-            ["unavailable"] = "Service niet beschikbaar",
-            ["checkingVersion"] = "Versie controleren...",
-            ["version"] = "Versie",
-            ["loginError"] = "Authenticatie mislukt.",
-            ["updateError"] = "De applicatieversie kon niet worden gecontroleerd."
-        },
-        ["pl"] = new()
-        {
-            ["title"] = "GRY W POKOJU",
-            ["name"] = "Nazwa",
-            ["password"] = "Hasło",
-            ["showPassword"] = "Pokaż hasło",
-            ["rememberPassword"] = "Zapamiętaj hasło",
-            ["startWithWindows"] = "Uruchamiaj aplikację wraz z systemem Windows",
-            ["language"] = "Język",
-            ["connect"] = "ZALOGUJ SIĘ",
-            ["forgotPassword"] = "Nie pamiętasz hasła?",
-            ["createAccount"] = "Utwórz konto",
-            ["about"] = "O nas",
-            ["status"] = "Stan i usługi",
-            ["exit"] = "Wyjście",
-            ["connecting"] = "Łączenie z usługą...",
-            ["available"] = "Usługa dostępna",
-            ["unavailable"] = "Usługa niedostępna",
-            ["checkingVersion"] = "Sprawdzanie wersji...",
-            ["version"] = "Wersja",
-            ["loginError"] = "Uwierzytelnianie nie powiodło się.",
-            ["updateError"] = "Nie można sprawdzić wersji aplikacji."
-        },
-        ["fr"] = new()
-        {
-            ["title"] = "JEUX DANS LA SALLE",
-            ["name"] = "Nom",
-            ["password"] = "Mot de passe",
-            ["showPassword"] = "Afficher le mot de passe",
-            ["rememberPassword"] = "Mémoriser le mot de passe",
-            ["startWithWindows"] = "Démarrer l'application avec Windows",
-            ["language"] = "Langue",
-            ["connect"] = "SE CONNECTER",
-            ["forgotPassword"] = "Mot de passe oublié ?",
-            ["createAccount"] = "Créer un compte",
-            ["about"] = "À propos de nous",
-            ["status"] = "État et services",
-            ["exit"] = "Quitter",
-            ["connecting"] = "Connexion au service...",
-            ["available"] = "Service disponible",
-            ["unavailable"] = "Service indisponible",
-            ["checkingVersion"] = "Vérification de la version...",
-            ["version"] = "Version",
-            ["loginError"] = "Échec de l'authentification.",
-            ["updateError"] = "Impossible de vérifier la version de l'application."
-        }
+        ["title"] = "nativeTitle",
+        ["name"] = "nativeName",
+        ["password"] = "nativePassword",
+        ["showPassword"] = "nativeShowPassword",
+        ["rememberPassword"] = "nativeRememberCredentials",
+        ["rememberCredentials"] = "nativeRememberCredentials",
+        ["startWithWindows"] = "nativeStartWithWindows",
+        ["language"] = "nativeLanguage",
+        ["connect"] = "nativeConnect",
+        ["forgotPassword"] = "nativeForgotPassword",
+        ["createAccount"] = "nativeCreateAccount",
+        ["about"] = "nativeAbout",
+        ["status"] = "nativeStatus",
+        ["exit"] = "nativeExit",
+        ["connecting"] = "nativeConnecting",
+        ["available"] = "nativeAvailable",
+        ["unavailable"] = "nativeUnavailable",
+        ["checkingVersion"] = "nativeCheckingVersion",
+        ["version"] = "nativeVersion",
+        ["loginError"] = "nativeLoginError",
+        ["updateError"] = "nativeUpdateError"
     };
+
+    private static string _currentLanguage = LoadSavedLanguage();
+
+    public static string CurrentLanguage => _currentLanguage;
+
+    public static IReadOnlyList<(string Code, string Name)> AvailableLanguages => new (string, string)[]
+    {
+        ("ro", "Română"), ("en", "English"), ("pt", "Português"), ("tr", "Türkçe"),
+        ("it", "Italiano"), ("es", "Español"), ("de", "Deutsch"), ("fr", "Français"),
+        ("nl", "Nederlands"), ("pl", "Polski")
+    };
+
+    public static event EventHandler? LanguageChanged;
+
+    private static Dictionary<string, Dictionary<string, string>> LoadLanguages()
+    {
+        const string resourceName = "CrisGameRoom.Localization.catalog.json";
+        using Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName)
+            ?? throw new InvalidOperationException(
+                $"Catalogul comun de localizare nu este inclus în aplicație: {resourceName}");
+
+        using JsonDocument document = JsonDocument.Parse(stream);
+        JsonElement languageRoot = document.RootElement.GetProperty("languages");
+        var result = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (JsonProperty language in languageRoot.EnumerateObject())
+        {
+            var entries = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (JsonProperty entry in language.Value.EnumerateObject())
+            {
+                if (entry.Value.ValueKind == JsonValueKind.String)
+                {
+                    string? value = entry.Value.GetString();
+                    if (value is not null)
+                        entries[entry.Name] = value;
+                }
+            }
+
+            result[language.Name] = entries;
+        }
+
+        string[] expected = ["ro", "en", "pt", "tr", "it", "es", "de", "fr", "nl", "pl"];
+        if (result.Count != expected.Length)
+            throw new InvalidDataException("Catalogul comun trebuie să conțină exact 10 limbi.");
+
+        foreach (string code in expected)
+        {
+            if (!result.ContainsKey(code))
+                throw new InvalidDataException($"Lipsește limba obligatorie: {code}");
+        }
+
+        return result;
+    }
+
+    private static string GetLanguageFilePath()
+    {
+        return Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "CrisGameRoom",
+            "language.txt");
+    }
+
+    private static string LoadSavedLanguage()
+    {
+        try
+        {
+            string path = GetLanguageFilePath();
+            if (File.Exists(path))
+            {
+                string saved = File.ReadAllText(path).Trim().ToLowerInvariant();
+                if (Languages.ContainsKey(saved))
+                    return saved;
+            }
+        }
+        catch
+        {
+        }
+
+        return "ro";
+    }
 
     public static void SetLanguage(string code)
     {
-        if (Languages.ContainsKey(code))
-            CurrentLanguage = code;
+        if (string.IsNullOrWhiteSpace(code))
+            return;
+
+        string normalized = code.Trim().ToLowerInvariant();
+        if (!Languages.ContainsKey(normalized))
+            return;
+
+        _currentLanguage = normalized;
+        ApplyCulture(normalized);
+        LanguageChanged?.Invoke(null, EventArgs.Empty);
+
+        try
+        {
+            string path = GetLanguageFilePath();
+            string? directory = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(directory))
+                Directory.CreateDirectory(directory);
+            File.WriteAllText(path, normalized);
+        }
+        catch
+        {
+        }
+    }
+
+    public static void ApplyCurrentCulture() => ApplyCulture(_currentLanguage);
+
+    private static void ApplyCulture(string code)
+    {
+        string cultureName = code switch
+        {
+            "ro" => "ro-RO", "en" => "en-US", "pt" => "pt-PT", "tr" => "tr-TR",
+            "it" => "it-IT", "es" => "es-ES", "de" => "de-DE", "fr" => "fr-FR",
+            "nl" => "nl-NL", "pl" => "pl-PL", _ => "ro-RO"
+        };
+        CultureInfo culture = CultureInfo.GetCultureInfo(cultureName);
+        CultureInfo.DefaultThreadCurrentCulture = culture;
+        CultureInfo.DefaultThreadCurrentUICulture = culture;
+        Thread.CurrentThread.CurrentCulture = culture;
+        Thread.CurrentThread.CurrentUICulture = culture;
     }
 
     public static string Get(string key)
     {
-        if (Languages.TryGetValue(CurrentLanguage, out var language) &&
-            language.TryGetValue(key, out var value))
+        string resolvedKey = NativeAliases.TryGetValue(key, out string? nativeKey)
+            ? nativeKey
+            : key;
+
+        if (Languages.TryGetValue(_currentLanguage, out var language) &&
+            language.TryGetValue(resolvedKey, out string? value))
             return value;
 
-        return Languages["ro"].TryGetValue(key, out var fallback)
+        return Languages.TryGetValue("ro", out var romanian) &&
+               romanian.TryGetValue(resolvedKey, out string? fallback)
             ? fallback
             : key;
     }

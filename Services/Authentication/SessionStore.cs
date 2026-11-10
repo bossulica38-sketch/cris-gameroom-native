@@ -1,4 +1,6 @@
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using CrisGameRoom.Models;
 
@@ -11,12 +13,13 @@ public sealed class SessionStore
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "CrisGameRoom");
 
-    private string FilePath => Path.Combine(_directory, "session.json");
+    private string FilePath => Path.Combine(_directory, "session.dat");
 
     public async Task SaveAsync(AuthResult result)
     {
         if (string.IsNullOrWhiteSpace(result.AccessToken))
-            throw new InvalidOperationException("Serverul nu a returnat tokenul de autentificare.");
+            throw new InvalidOperationException(
+                "Serverul nu a returnat tokenul de autentificare.");
 
         Directory.CreateDirectory(_directory);
 
@@ -26,11 +29,15 @@ public sealed class SessionStore
             ExpiresAt = result.ExpiresAt
         };
 
-        var json = JsonSerializer.Serialize(
-            payload,
-            new JsonSerializerOptions { WriteIndented = true });
+        var json = JsonSerializer.Serialize(payload);
+        var plaintext = Encoding.UTF8.GetBytes(json);
 
-        await File.WriteAllTextAsync(FilePath, json);
+        var protectedData = ProtectedData.Protect(
+            plaintext,
+            null,
+            DataProtectionScope.CurrentUser);
+
+        await File.WriteAllBytesAsync(FilePath, protectedData);
     }
 
     public async Task<StoredSession?> LoadAsync()
@@ -40,7 +47,15 @@ public sealed class SessionStore
 
         try
         {
-            var json = await File.ReadAllTextAsync(FilePath);
+            var protectedData = await File.ReadAllBytesAsync(FilePath);
+
+            var plaintext = ProtectedData.Unprotect(
+                protectedData,
+                null,
+                DataProtectionScope.CurrentUser);
+
+            var json = Encoding.UTF8.GetString(plaintext);
+
             var session = JsonSerializer.Deserialize<StoredSession>(json);
 
             if (session is null || string.IsNullOrWhiteSpace(session.AccessToken))
@@ -68,6 +83,11 @@ public sealed class SessionStore
         {
             if (File.Exists(FilePath))
                 File.Delete(FilePath);
+
+            var legacyFile = Path.Combine(_directory, "session.json");
+
+            if (File.Exists(legacyFile))
+                File.Delete(legacyFile);
         }
         catch
         {

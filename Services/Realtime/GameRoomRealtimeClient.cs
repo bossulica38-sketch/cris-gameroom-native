@@ -33,6 +33,7 @@ public sealed class GameRoomRealtimeClient : IAsyncDisposable
             ServerConfiguration.RealtimeBaseUrl,
             new SocketIOOptions
             {
+                Path = ServerConfiguration.RealtimePath,
                 Transport = SocketIOClient.Transport.TransportProtocol.WebSocket,
                 Reconnection = true,
                 ReconnectionAttempts = int.MaxValue,
@@ -67,7 +68,7 @@ public sealed class GameRoomRealtimeClient : IAsyncDisposable
 
         Register("realtime:connected");
         Register("presence:update");
-
+        Register("PLATFORM_NOTIFICATION");        Register("room:state");        Register("room:chat:list");        Register("room:joined");        Register("room:chat:delete");
         Register("room.updated");
         Register("room.participant_joined");
         Register("room.participant_left");
@@ -76,7 +77,7 @@ public sealed class GameRoomRealtimeClient : IAsyncDisposable
         Register("room.participant_kicked");
         Register("room.participant_blocked");
         Register("room.owner_changed");
-        Register("room.closed");
+        Register("room:closed");
         Register("room.deleted");
         Register("room.message_created");
         Register("room.message_deleted");
@@ -170,6 +171,35 @@ public sealed class GameRoomRealtimeClient : IAsyncDisposable
             {
                 code = code.Trim().ToUpperInvariant(),
                 limit
+            });
+    }
+
+
+    public async Task DeleteChatAsync(
+        string code,
+        string messageId)
+    {
+        EnsureConnected();
+
+        var normalizedCode = code?.Trim().ToUpperInvariant() ?? string.Empty;
+        var normalizedMessageId = messageId?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(normalizedCode))
+            throw new ArgumentException(
+                "Codul camerei este obligatoriu.",
+                nameof(code));
+
+        if (string.IsNullOrWhiteSpace(normalizedMessageId))
+            throw new ArgumentException(
+                "ID-ul mesajului este obligatoriu.",
+                nameof(messageId));
+
+        await _socket!.EmitAsync(
+            "room:chat:delete",
+            new
+            {
+                code = normalizedCode,
+                messageId = normalizedMessageId
             });
     }
 

@@ -15,9 +15,17 @@ public static class UpdateGate
         {
             update = await service.CheckAsync();
         }
-        catch
+        catch (Exception ex)
         {
-            return true;
+            MessageBox.Show(
+                owner,
+                "Nu s-a putut verifica versiunea aplicației.\n\n" + ex.Message +
+                "\n\nConectarea este blocată până când verificarea poate fi efectuată.",
+                "Verificare actualizare",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+
+            return false;
         }
 
         if (update is null)
@@ -26,9 +34,10 @@ public static class UpdateGate
         var result = MessageBox.Show(
             owner,
             $"Este disponibilă versiunea {update.Version}.\n\n" +
-            "Este necesară actualizarea aplicației înainte de continuare.\n\n" +
+            "Actualizarea este opțională. Poți continua să folosești versiunea actuală, " +
+            "dar noutățile și îmbunătățirile acestei versiuni nu vor fi disponibile până când alegi actualizarea.\n\n" +
             update.ReleaseNotes,
-            "Actualizare Jocuri și Discuții",
+            "Actualizare disponibilă — Jocuri și Discuții",
             MessageBoxButton.YesNo,
             MessageBoxImage.Information);
 

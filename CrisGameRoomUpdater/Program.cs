@@ -1,222 +1,51 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
+using System.Linq;
+using System.Net.Http;
+using System.Security.Cryptography;
+using System.Text.RegularExpressions;
 using System.Threading;
 
 internal static class Program
 {
-    private static int Main(string[] args)
+    private sealed class Change
     {
-        string log = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "CrisGameRoom",
-            "update.log");
+        public required string Destination { get; init; }
+        public required string Backup { get; init; }
+        public required bool Existed { get; init; }
+    }
 
-        Directory.CreateDirectory(Path.GetDirectoryName(log)!);
-
+    private static void Log(string path, string message)
+    {
         try
         {
-            Log(log, "UPDATER_START");
-
-            var pidText = Get(args, "--pid");
-            var target = Get(args, "--target");
-            var url = Get(args, "--url");
-            var expectedSha256 = Get(args, "--sha256");
-            var expectedVersion = Get(args, "--version");
-
-            Log(log, $"PID={pidText}");
-            Log(log, $"TARGET={target}");
-            Log(log, $"URL={url}");
-            Log(log, $"EXPECTED_SHA256={expectedSha256}");
-            Log(log, $"EXPECTED_VERSION={expectedVersion}");
-
-            if (!int.TryParse(pidText, out var processId) ||
-                string.IsNullOrWhiteSpace(target) ||
-                string.IsNullOrWhiteSpace(url) ||
-                string.IsNullOrWhiteSpace(expectedSha256))
-                return Fail(log, 2, "ARGUMENTE_INVALIDE");
-
-            if (!File.Exists(target))
-                return Fail(log, 4, "APLICATIE_TINTA_LIPSA");
-
-            var directory = Path.GetDirectoryName(target);
-            if (string.IsNullOrWhiteSpace(directory))
-                return Fail(log, 5, "DIRECTOR_TINTA_INVALID");
-
-            Log(log, "WAITING_FOR_APPLICATION_EXIT");
-
-            if (!WaitForProcessExit(processId, log))
-                return Fail(log, 6, "PROCESUL_APLICATIEI_NU_S_A_INCHIS");
-
-            Log(log, "APPLICATION_PROCESS_EXITED");
-
-            var backup = target + ".previous";
-            var staged = target + ".staged";
-            var package = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "CrisGameRoom",
-                "Updates",
-                $"JocuriSiDiscutii-{expectedVersion}-{(Environment.Is64BitOperatingSystem ? "x64" : "x86")}.download");
-
-            Directory.CreateDirectory(Path.GetDirectoryName(package)!);
-
-            TryDelete(staged);
-            TryDelete(package);
-
-            Log(log, "DOWNLOAD_AFTER_APPLICATION_EXIT");
-
-            using (var http = new System.Net.Http.HttpClient())
-            {
-                http.Timeout = TimeSpan.FromMinutes(10);
-
-                using var response = http.GetAsync(
-                    url,
-                    System.Net.Http.HttpCompletionOption.ResponseHeadersRead).GetAwaiter().GetResult();
-
-                response.EnsureSuccessStatusCode();
-
-                using var input = response.Content.ReadAsStream();
-                using var output = new FileStream(
-                    package,
-                    FileMode.CreateNew,
-                    FileAccess.Write,
-                    FileShare.None,
-                    1024 * 1024,
-                    FileOptions.SequentialScan | FileOptions.WriteThrough);
-
-                input.CopyTo(output);
-                output.Flush(true);
-            }
-
-            Log(log, "DOWNLOAD_COMPLETE");
-
-            string actualSha256;
-            using (var stream = File.OpenRead(package))
-            using (var sha = System.Security.Cryptography.SHA256.Create())
-            {
-                actualSha256 = Convert.ToHexString(
-                    sha.ComputeHash(stream)).ToLowerInvariant();
-            }
-
-            if (!string.Equals(
-                    actualSha256,
-                    expectedSha256,
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                TryDelete(package);
-                return Fail(log, 7, "SHA256_INVALID");
-            }
-
-            Log(log, "SHA256_VALID");
-
-            Log(log, "COPY_PACKAGE_TO_STAGED");
-
-            if (!RetryFileOperation(
-                    () => File.Copy(package, staged, true),
-                    60,
-                    500,
-                    log,
-                    "COPY_STAGED"))
-                return Fail(log, 8, "COPIERE_STAGED_ESUATA");
-
-            Log(log, "REPLACE_APPLICATION");
-
-            bool replaced = false;
-
-            for (int attempt = 1; attempt <= 60; attempt++)
-            {
-                try
-                {
-                    if (File.Exists(backup))
-                        File.Delete(backup);
-
-                    File.Move(target, backup);
-                    Log(log, $"BACKUP_CREATED_ATTEMPT={attempt}");
-
-                    File.Move(staged, target);
-                    Log(log, $"APPLICATION_REPLACED_ATTEMPT={attempt}");
-
-                    replaced = true;
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    Log(log,
-                        $"REPLACE_RETRY={attempt} " +
-                        $"TYPE={ex.GetType().Name} " +
-                        $"MESSAGE={ex.Message}");
-
-                    if (File.Exists(backup) && !File.Exists(target))
-                    {
-                        try
-                        {
-                            File.Move(backup, target, true);
-                        }
-                        catch (Exception rollbackEx)
-                        {
-                            Log(log,
-                                $"ROLLBACK_RETRY_FAILED={rollbackEx.Message}");
-                        }
-                    }
-
-                    Thread.Sleep(1000);
-                }
-            }
-
-            if (!replaced)
-                return Fail(log, 9, "EXE_BLOCAT_SAU_INLOCUIRE_ESUATA");
-
-            TryDelete(package);
-
-            Log(log, "UPDATE_REPLACED_SUCCESSFULLY");
-            Log(log, "STARTING_UPDATED_APPLICATION");
-
-            try
-            {
-                var process = Process.Start(new ProcessStartInfo
-                {
-                    FileName = target,
-                    UseShellExecute = true,
-                    WorkingDirectory = directory
-                });
-
-                if (process is null)
-                    throw new InvalidOperationException(
-                        "Windows nu a putut porni aplicația actualizată.");
-
-                Log(log, $"UPDATED_PROCESS_STARTED_PID={process.Id}");
-                Log(log, "UPDATE_SUCCESS");
-
-                return 0;
-            }
-            catch (Exception ex)
-            {
-                Log(log,
-                    $"UPDATED_START_FAILED={ex.GetType().Name}: {ex.Message}");
-
-                if (File.Exists(backup))
-                {
-                    try
-                    {
-                        File.Delete(target);
-                        File.Move(backup, target, true);
-                        Log(log, "ROLLBACK_SUCCESS");
-                    }
-                    catch (Exception rollbackEx)
-                    {
-                        Log(log,
-                            $"ROLLBACK_FAILED={rollbackEx.GetType().Name}: {rollbackEx.Message}");
-                    }
-                }
-
-                return Fail(log, 10, "PORNIRE_UPDATE_ESUATA");
-            }
+            File.AppendAllText(
+                path,
+                $"[{DateTimeOffset.Now:O}] {message}{Environment.NewLine}");
         }
-        catch (Exception ex)
+        catch
         {
-            return Fail(log, 99,
-                $"EXCEPTIE_NEASTEPTATA={ex.GetType().Name}: {ex.Message}");
         }
+    }
+
+    private static string Get(string[] args, string key)
+    {
+        for (int i = 0; i < args.Length - 1; i++)
+        {
+            if (string.Equals(args[i], key, StringComparison.OrdinalIgnoreCase))
+                return args[i + 1];
+        }
+
+        return "";
+    }
+
+    private static string Sha256(string path)
+    {
+        using var stream = File.OpenRead(path);
+        return Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
     }
 
     private static bool WaitForProcessExit(int processId, string log)
@@ -233,7 +62,7 @@ internal static class Program
                     return true;
                 }
 
-                if (second % 5 == 0)
+                if (second % 10 == 0)
                     Log(log, $"PROCESS_STILL_RUNNING={second}s");
 
                 Thread.Sleep(1000);
@@ -248,78 +77,315 @@ internal static class Program
         }
     }
 
-    private static bool RetryFileOperation(
-        Action action,
-        int attempts,
-        int delay,
-        string log,
-        string operation)
+    private static bool IsInsideDirectory(string path, string directory)
     {
-        for (int attempt = 1; attempt <= attempts; attempt++)
+        string normalizedDirectory = Path.GetFullPath(directory)
+            .TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+
+        string normalizedPath = Path.GetFullPath(path);
+
+        return normalizedPath.StartsWith(
+            normalizedDirectory,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void CleanupDirectory(string path, string log)
+    {
+        try
         {
+            if (Directory.Exists(path))
+                Directory.Delete(path, true);
+        }
+        catch (Exception ex)
+        {
+            Log(log, $"CLEANUP_WARNING={path} {ex.GetType().Name}: {ex.Message}");
+        }
+    }
+
+    private static int Main(string[] args)
+    {
+        string localRoot = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "CrisGameRoom");
+
+        string updateRoot = Path.Combine(localRoot, "Updates");
+        string log = Path.Combine(localRoot, "update.log");
+
+        string archive = "";
+        string extraction = "";
+        string rollbackRoot = "";
+        string target = "";
+        var changes = new List<Change>();
+        bool rollbackFailed = false;
+
+        Directory.CreateDirectory(updateRoot);
+        Log(log, "UPDATER_START");
+
+        try
+        {
+            string pidText = Get(args, "--pid");
+            target = Get(args, "--target");
+            string url = Get(args, "--url");
+            string expectedSha256 = Get(args, "--sha256");
+            string expectedVersion = Get(args, "--version");
+
+            Log(log, $"PID={pidText}");
+            Log(log, $"TARGET={target}");
+            Log(log, $"URL={url}");
+            Log(log, $"EXPECTED_VERSION={expectedVersion}");
+
+            if (!int.TryParse(pidText, out int processId) ||
+                string.IsNullOrWhiteSpace(target) ||
+                string.IsNullOrWhiteSpace(url) ||
+                !Regex.IsMatch(expectedSha256, "^[0-9a-fA-F]{64}$") ||
+                !Version.TryParse(expectedVersion, out _))
+            {
+                throw new InvalidOperationException("ARGUMENTE_SAU_VERSIUNE_INVALIDE");
+            }
+
+            target = Path.GetFullPath(target);
+
+            if (!string.Equals(
+                    Path.GetFileName(target),
+                    "JocuriSiDiscutii.exe",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("EXECUTABIL_ȚINTĂ_NEACCEPTAT");
+            }
+
+            if (!File.Exists(target))
+                throw new FileNotFoundException("APLICAȚIE_ȚINTĂ_LIPSĂ", target);
+
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var packageUri) ||
+                packageUri.Scheme != Uri.UriSchemeHttps ||
+                !string.Equals(
+                    packageUri.Host,
+                    "criswebhost.ro",
+                    StringComparison.OrdinalIgnoreCase) ||
+                !packageUri.AbsolutePath.StartsWith(
+                    "/downloads/gameroom/stable/",
+                    StringComparison.OrdinalIgnoreCase) ||
+                !packageUri.AbsolutePath.EndsWith(
+                    ".zip",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("URL_PACHET_NEACCEPTAT");
+            }
+
+            if (!WaitForProcessExit(processId, log))
+                throw new TimeoutException("PROCESUL_APLICAȚIEI_NU_S_A_ÎNCHIS");
+
+            string installDirectory = Path.GetDirectoryName(target)
+                ?? throw new InvalidOperationException("DIRECTOR_ȚINTĂ_INVALID");
+
+            string runId = Guid.NewGuid().ToString("N");
+            archive = Path.Combine(updateRoot, $"update-{runId}.zip");
+            extraction = Path.Combine(updateRoot, $"extract-{runId}");
+            rollbackRoot = Path.Combine(updateRoot, $"rollback-{runId}");
+
+            Directory.CreateDirectory(extraction);
+            Directory.CreateDirectory(rollbackRoot);
+
+            Log(log, "DOWNLOAD_START");
+
+            using (var http = new HttpClient { Timeout = TimeSpan.FromMinutes(10) })
+            using (var response = http.GetAsync(
+                packageUri,
+                HttpCompletionOption.ResponseHeadersRead).GetAwaiter().GetResult())
+            {
+                response.EnsureSuccessStatusCode();
+
+                using var input = response.Content.ReadAsStream();
+                using var output = new FileStream(
+                    archive,
+                    FileMode.CreateNew,
+                    FileAccess.Write,
+                    FileShare.None,
+                    1024 * 1024,
+                    FileOptions.SequentialScan | FileOptions.WriteThrough);
+
+                input.CopyTo(output);
+                output.Flush(true);
+            }
+
+            Log(log, "DOWNLOAD_COMPLETE");
+
+            string actualHash = Sha256(archive);
+            if (!string.Equals(
+                actualHash,
+                expectedSha256,
+                StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidDataException("SHA256_INVALID");
+            }
+
+            Log(log, "SHA256_VALID");
+
+            ZipFile.ExtractToDirectory(archive, extraction, true);
+
+            string newExecutable = Path.Combine(extraction, "JocuriSiDiscutii.exe");
+            if (!File.Exists(newExecutable) || new FileInfo(newExecutable).Length < 100_000)
+                throw new InvalidDataException("ARHIVĂ_FĂRĂ_EXECUTABIL_VALID");
+
+            Log(log, "ARCHIVE_EXTRACTED");
+
+            foreach (string sourceFile in Directory.EnumerateFiles(
+                extraction, "*", SearchOption.AllDirectories))
+            {
+                string relative = Path.GetRelativePath(extraction, sourceFile);
+                string normalizedRelative = relative.Replace('\\', '/');
+
+                if (Path.IsPathRooted(relative) ||
+                    normalizedRelative.Split('/').Any(
+                        part => part == ".." || part == "."))
+                {
+                    throw new InvalidDataException("CALE_ARHIVĂ_NEVALIDĂ");
+                }
+
+                // Actualizatorul nu își înlocuiește propriul executabil în timp ce rulează.
+                if (string.Equals(
+                    normalizedRelative,
+                    "updater/CrisGameRoomUpdater.exe",
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                string destination = Path.GetFullPath(
+                    Path.Combine(installDirectory, relative));
+
+                if (!string.Equals(
+                    Path.GetDirectoryName(destination),
+                    installDirectory,
+                    StringComparison.OrdinalIgnoreCase) &&
+                    !IsInsideDirectory(destination, installDirectory))
+                {
+                    throw new InvalidDataException("CALE_DESTINAȚIE_NEVALIDĂ");
+                }
+
+                Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+
+                bool existed = File.Exists(destination);
+                string backup = Path.Combine(rollbackRoot, relative);
+
+                if (existed)
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(backup)!);
+                    File.Copy(destination, backup, true);
+                }
+
+                // Înregistrăm schimbarea înainte de înlocuire pentru rollback la eroare.
+                changes.Add(new Change
+                {
+                    Destination = destination,
+                    Backup = backup,
+                    Existed = existed
+                });
+
+                string temporary = destination + "." + runId + ".staged";
+
+                try
+                {
+                    File.Copy(sourceFile, temporary, true);
+                    File.Move(temporary, destination, true);
+                }
+                finally
+                {
+                    try
+                    {
+                        if (File.Exists(temporary))
+                            File.Delete(temporary);
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+
+            if (!File.Exists(target))
+                throw new IOException("EXECUTABILUL_FINAL_LIPSEȘTE");
+
+            Log(log, "ALL_FILES_REPLACED");
+
+            var process = Process.Start(new ProcessStartInfo
+            {
+                FileName = target,
+                WorkingDirectory = installDirectory,
+                UseShellExecute = true
+            });
+
+            if (process is null)
+                throw new InvalidOperationException("APLICAȚIA_ACTUALIZATĂ_NU_A_PORNIT");
+
+            Log(log, $"UPDATED_PROCESS_STARTED_PID={process.Id}");
+            Log(log, "UPDATE_SUCCESS");
+
+            CleanupDirectory(extraction, log);
+            CleanupDirectory(rollbackRoot, log);
+
             try
             {
-                action();
-                Log(log, $"{operation}_SUCCESS_ATTEMPT={attempt}");
-                return true;
+                if (File.Exists(archive))
+                    File.Delete(archive);
             }
             catch (Exception ex)
             {
-                Log(log,
-                    $"{operation}_RETRY={attempt} " +
-                    $"TYPE={ex.GetType().Name} " +
-                    $"MESSAGE={ex.Message}");
-
-                Thread.Sleep(delay);
+                Log(log, $"ARCHIVE_CLEANUP_WARNING={ex.Message}");
             }
+
+            return 0;
         }
-
-        return false;
-    }
-
-    private static string Get(string[] args, string name)
-    {
-        for (int i = 0; i < args.Length - 1; i++)
+        catch (Exception ex)
         {
-            if (string.Equals(
-                    args[i],
-                    name,
-                    StringComparison.OrdinalIgnoreCase))
-                return args[i + 1];
-        }
+            Log(log, $"UPDATE_ERROR={ex.GetType().Name}: {ex.Message}");
 
-        return "";
-    }
+            foreach (Change change in changes.AsEnumerable().Reverse())
+            {
+                try
+                {
+                    if (change.Existed)
+                    {
+                        if (!File.Exists(change.Backup))
+                            throw new IOException("FIȘIER_ROLLBACK_LIPSĂ: " + change.Backup);
 
-    private static int Fail(string log, int code, string message)
-    {
-        Log(log, $"UPDATE_FAILED_CODE={code}");
-        Log(log, message);
-        return code;
-    }
+                        Directory.CreateDirectory(
+                            Path.GetDirectoryName(change.Destination)!);
 
-    private static void Log(string path, string message)
-    {
-        try
-        {
-            File.AppendAllText(
-                path,
-                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} | {message}{Environment.NewLine}");
-        }
-        catch
-        {
-        }
-    }
+                        File.Copy(change.Backup, change.Destination, true);
+                    }
+                    else if (File.Exists(change.Destination))
+                    {
+                        File.Delete(change.Destination);
+                    }
+                }
+                catch (Exception rollbackEx)
+                {
+                    rollbackFailed = true;
+                    Log(log,
+                        $"ROLLBACK_ERROR={change.Destination} " +
+                        $"{rollbackEx.GetType().Name}: {rollbackEx.Message}");
+                }
+            }
 
-    private static void TryDelete(string path)
-    {
-        try
-        {
-            if (File.Exists(path))
-                File.Delete(path);
-        }
-        catch
-        {
+            Log(log, rollbackFailed ? "ROLLBACK_INCOMPLETE" : "ROLLBACK_FINISHED");
+
+            CleanupDirectory(extraction, log);
+
+            if (!rollbackFailed)
+                CleanupDirectory(rollbackRoot, log);
+            else
+                Log(log, $"ROLLBACK_FILES_RETAINED={rollbackRoot}");
+
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(archive) && File.Exists(archive))
+                    File.Delete(archive);
+            }
+            catch
+            {
+            }
+
+            return 99;
         }
     }
 }
