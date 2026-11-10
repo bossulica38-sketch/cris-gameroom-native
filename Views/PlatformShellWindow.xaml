@@ -1,7 +1,6 @@
 <Window x:Class="CrisGameRoom.Views.PlatformShellWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:automation="http://schemas.microsoft.com/winfx/2006/automation"
         Title="CRIS GAMEROOM — Platformă"
         Width="1280"
         Height="820"
@@ -171,27 +170,27 @@
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                              KeyboardNavigation.TabNavigation="Once"
                              SelectionChanged="NavigationMenu_SelectionChanged"
-                             automation:AutomationProperties.Name="Meniul principal CRIS GAMEROOM"
-                             automation:AutomationProperties.HelpText="Navighează cu săgețile sus și jos. Apasă Enter pentru a selecta intrarea."
+                             AutomationProperties.Name="Meniul principal CRIS GAMEROOM"
+                             AutomationProperties.HelpText="Navighează cu săgețile sus și jos. Apasă Enter pentru a selecta intrarea."
                              Focusable="True">
                         <ListBoxItem Tag="create" Content="Creează o tablă nouă"
                                      Style="{StaticResource PlatformNavigationItem}"
-                                     automation:AutomationProperties.Name="Creează o tablă nouă"/>
+                                     AutomationProperties.Name="Creează o tablă nouă"/>
                         <ListBoxItem Tag="join" Content="Intră într-o tablă"
                                      Style="{StaticResource PlatformNavigationItem}"
-                                     automation:AutomationProperties.Name="Intră într-o tablă"/>
+                                     AutomationProperties.Name="Intră într-o tablă"/>
                         <ListBoxItem Tag="restore" Content="Restaurează o tablă"
                                      Style="{StaticResource PlatformNavigationItem}"
-                                     automation:AutomationProperties.Name="Restaurează o tablă"/>
+                                     AutomationProperties.Name="Restaurează o tablă"/>
                         <ListBoxItem Tag="options" Content="Opțiuni"
                                      Style="{StaticResource PlatformNavigationItem}"
-                                     automation:AutomationProperties.Name="Opțiuni"/>
+                                     AutomationProperties.Name="Opțiuni"/>
                         <ListBoxItem Tag="features" Content="Funcții și altele"
                                      Style="{StaticResource PlatformNavigationItem}"
-                                     automation:AutomationProperties.Name="Funcții și altele"/>
+                                     AutomationProperties.Name="Funcții și altele"/>
                         <ListBoxItem Tag="leave" Content="Părăsește camera de joc"
                                      Style="{StaticResource PlatformNavigationItem}"
-                                     automation:AutomationProperties.Name="Părăsește camera de joc"/>
+                                     AutomationProperties.Name="Părăsește camera de joc"/>
                     </ListBox>
                 </DockPanel>
             </Border>
