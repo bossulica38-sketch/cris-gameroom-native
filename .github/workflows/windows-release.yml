@@ -45,6 +45,19 @@ jobs:
       - name: Compilează actualizatorul
         run: dotnet publish CrisGameRoomUpdater/CrisGameRoomUpdater.csproj -c Release -r ${{ matrix.rid }} --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o installer/staging/${{ matrix.rid }}/updater
 
+      - name: Normalizează fișierele publicate
+        shell: pwsh
+        run: |
+          $stage = "installer/staging/${{ matrix.rid }}"
+          $app = Get-ChildItem $stage -Filter JocuriSiDiscutii.exe -File -Recurse | Select-Object -First 1
+          $updater = Get-ChildItem "$stage/updater" -Filter CrisGameRoomUpdater.exe -File -Recurse | Select-Object -First 1
+          if (!$app) { Get-ChildItem $stage -Recurse | Select-Object FullName; throw "Executabilul aplicației lipsește din $stage" }
+          if (!$updater) { Get-ChildItem $stage -Recurse | Select-Object FullName; throw "Executabilul actualizatorului lipsește din $stage/updater" }
+          Copy-Item $app.FullName "$stage/JocuriSiDiscutii.exe" -Force
+          New-Item -ItemType Directory -Force "$stage/updater" | Out-Null
+          Copy-Item $updater.FullName "$stage/updater/CrisGameRoomUpdater.exe" -Force
+          Get-Item "$stage/JocuriSiDiscutii.exe", "$stage/updater/CrisGameRoomUpdater.exe" | Select-Object FullName,Length
+
       - name: Instalează NSIS
         run: choco install nsis -y --no-progress
 
