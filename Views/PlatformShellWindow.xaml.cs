@@ -190,13 +190,9 @@ public partial class PlatformShellWindow : Window
                 Foreground = TryFindResource("ThemeTextBrush") as Brush ?? Brushes.Black,
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 0, 0, 12),
-                Tag = 15.0,
-                AutomationProperties =
-                {
-                    Name = line
-                }
+                Tag = 15.0
             };
-
+            AutomationProperties.SetName(text, line);
             PageBody.Children.Add(text);
         }
     }

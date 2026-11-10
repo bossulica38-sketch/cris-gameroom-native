@@ -8,6 +8,7 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using CrisGameRoom.Localization;
 
 namespace CrisGameRoom.Views;
 

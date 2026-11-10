@@ -7,6 +7,7 @@ using CrisGameRoom.Services.Security;
 using CrisGameRoom.Services.Updates;
 using CrisGameRoom.Localization;
 using System.Windows.Controls;
+using System.Windows.Automation;
 namespace CrisGameRoom.Views;
 public partial class LoginWindow : Window
 {
