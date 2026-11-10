@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+    tags: ['v*']
     paths:
       - '**.cs'
       - '**.xaml'
@@ -13,6 +14,7 @@ on:
       - '.github/workflows/windows-release.yml'
 
 permissions:
+  actions: read
   contents: read
 
 jobs:
@@ -27,6 +29,8 @@ jobs:
             rid: win-x64
           - arch: x86
             rid: win-x86
+    env:
+      SIGNING_ENABLED: ${{ vars.SIGNPATH_ENABLED == 'true' && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') }}
     steps:
       - name: Preia sursele
         uses: actions/checkout@v4
@@ -39,30 +43,58 @@ jobs:
       - name: Restaurează dependențele
         run: dotnet restore CrisGameRoom.csproj -r ${{ matrix.rid }}
 
-      - name: Compilează aplicația WPF
+      - name: Compilează aplicația
         run: dotnet publish CrisGameRoom.csproj -c Release -r ${{ matrix.rid }} --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o installer/staging/${{ matrix.rid }}
 
       - name: Compilează actualizatorul
         run: dotnet publish CrisGameRoomUpdater/CrisGameRoomUpdater.csproj -c Release -r ${{ matrix.rid }} --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o installer/staging/${{ matrix.rid }}/updater
 
-      - name: Normalizează fișierele publicate
+      - name: Verifică executabilele
         shell: pwsh
         run: |
           $stage = "installer/staging/${{ matrix.rid }}"
           $app = Get-ChildItem $stage -Filter JocuriSiDiscutii.exe -File -Recurse | Select-Object -First 1
           $updater = Get-ChildItem "$stage/updater" -Filter CrisGameRoomUpdater.exe -File -Recurse | Select-Object -First 1
-          if (!$app) { Get-ChildItem $stage -Recurse | Select-Object FullName; throw "Executabilul aplicației lipsește din $stage" }
-          if (!$updater) { Get-ChildItem $stage -Recurse | Select-Object FullName; throw "Executabilul actualizatorului lipsește din $stage/updater" }
-          $appTarget = (Join-Path $stage "JocuriSiDiscutii.exe")
-          $updaterTarget = (Join-Path $stage "updater/CrisGameRoomUpdater.exe")
-          if ([IO.Path]::GetFullPath($app.FullName) -ne [IO.Path]::GetFullPath($appTarget)) {
-            Copy-Item $app.FullName $appTarget -Force
-          }
-          New-Item -ItemType Directory -Force (Split-Path $updaterTarget) | Out-Null
-          if ([IO.Path]::GetFullPath($updater.FullName) -ne [IO.Path]::GetFullPath($updaterTarget)) {
-            Copy-Item $updater.FullName $updaterTarget -Force
-          }
-          Get-Item "$stage/JocuriSiDiscutii.exe", "$stage/updater/CrisGameRoomUpdater.exe" | Select-Object FullName,Length
+          if (!$app -or !$updater) { throw 'Lipsește aplicația sau actualizatorul.' }
+          if ([IO.Path]::GetFullPath($app.FullName) -ne [IO.Path]::GetFullPath((Join-Path $stage 'JocuriSiDiscutii.exe'))) { Copy-Item $app.FullName (Join-Path $stage 'JocuriSiDiscutii.exe') -Force }
+          if ([IO.Path]::GetFullPath($updater.FullName) -ne [IO.Path]::GetFullPath((Join-Path $stage 'updater/CrisGameRoomUpdater.exe'))) { Copy-Item $updater.FullName (Join-Path $stage 'updater/CrisGameRoomUpdater.exe') -Force }
+
+      - name: Încarcă executabilele pentru semnare
+        if: env.SIGNING_ENABLED == 'true'
+        id: unsigned-binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: CRIS-Binaries-${{ matrix.arch }}-${{ github.run_id }}
+          path: |
+            installer/staging/${{ matrix.rid }}/JocuriSiDiscutii.exe
+            installer/staging/${{ matrix.rid }}/updater/CrisGameRoomUpdater.exe
+          if-no-files-found: error
+          retention-days: 2
+
+      - name: Semnează aplicația și actualizatorul
+        if: env.SIGNING_ENABLED == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_BINARIES_CONFIGURATION_SLUG }}
+          github-artifact-id: ${{ steps.unsigned-binaries.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: ${{ runner.temp }}/signpath-binaries
+
+      - name: Instalează binarele semnate
+        if: env.SIGNING_ENABLED == 'true'
+        shell: pwsh
+        run: |
+          $signed = Join-Path $env:RUNNER_TEMP 'signpath-binaries'
+          $app = Get-ChildItem $signed -Filter JocuriSiDiscutii.exe -File -Recurse | Select-Object -First 1
+          $updater = Get-ChildItem $signed -Filter CrisGameRoomUpdater.exe -File -Recurse | Select-Object -First 1
+          if (!$app -or !$updater) { throw 'SignPath nu a returnat ambele executabile semnate.' }
+          Copy-Item $app.FullName "installer/staging/${{ matrix.rid }}/JocuriSiDiscutii.exe" -Force
+          Copy-Item $updater.FullName "installer/staging/${{ matrix.rid }}/updater/CrisGameRoomUpdater.exe" -Force
 
       - name: Instalează NSIS
         run: choco install nsis -y --no-progress
@@ -73,24 +105,59 @@ jobs:
           New-Item -ItemType Directory -Force installer/output | Out-Null
           $stage = Join-Path $env:GITHUB_WORKSPACE "installer/staging/${{ matrix.rid }}"
           $output = Join-Path $env:GITHUB_WORKSPACE "installer/output/JocuriSiDiscutii-Setup-${{ matrix.arch }}.exe"
-          New-Item -ItemType Directory -Force (Split-Path $output) | Out-Null
-          $script = if ('${{ matrix.arch }}' -eq 'x64') { Join-Path $env:GITHUB_WORKSPACE "installer/nsis/JocuriSiDiscutii-x64.nsi" } else { Join-Path $env:GITHUB_WORKSPACE "installer/nsis/JocuriSiDiscutii-x86.nsi" }
-          & "C:\Program Files (x86)\NSIS\makensis.exe" "/DSTAGING=$stage" "/DOUTFILE=$output" $script
+          $script = if ('${{ matrix.arch }}' -eq 'x64') { Join-Path $env:GITHUB_WORKSPACE 'installer/nsis/JocuriSiDiscutii-x64.nsi' } else { Join-Path $env:GITHUB_WORKSPACE 'installer/nsis/JocuriSiDiscutii-x86.nsi' }
+          & 'C:\Program Files (x86)\NSIS\makensis.exe' "/DSTAGING=$stage" "/DOUTFILE=$output" $script
           if ($LASTEXITCODE -ne 0) { throw "NSIS a eșuat cu codul $LASTEXITCODE" }
 
-      - name: Verifică pachetul
-        shell: pwsh
-        run: |
-          $file = "installer/output/JocuriSiDiscutii-Setup-${{ matrix.arch }}.exe"
-          if (!(Test-Path $file)) { throw "Installerul lipsește: $file" }
-          $item = Get-Item $file
-          if ($item.Length -lt 10MB) { throw "Installer suspect de mic: $($item.Length) bytes" }
-          Get-FileHash $file -Algorithm SHA256 | Format-List
-
-      - name: Publică artefactul descărcabil
+      - name: Încarcă installerul pentru semnare
+        if: env.SIGNING_ENABLED == 'true'
+        id: unsigned-installer
         uses: actions/upload-artifact@v4
         with:
-          name: JocuriSiDiscutii-Setup-${{ matrix.arch }}
+          name: CRIS-Installer-${{ matrix.arch }}-${{ github.run_id }}
+          path: installer/output/JocuriSiDiscutii-Setup-${{ matrix.arch }}.exe
+          if-no-files-found: error
+          retention-days: 2
+
+      - name: Semnează installerul
+        if: env.SIGNING_ENABLED == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_INSTALLER_CONFIGURATION_SLUG }}
+          github-artifact-id: ${{ steps.unsigned-installer.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: ${{ runner.temp }}/signpath-installer
+
+      - name: Înlocuiește installerul cu cel semnat
+        if: env.SIGNING_ENABLED == 'true'
+        shell: pwsh
+        run: |
+          $signed = Join-Path $env:RUNNER_TEMP 'signpath-installer'
+          $file = Get-ChildItem $signed -Filter "JocuriSiDiscutii-Setup-${{ matrix.arch }}.exe" -File -Recurse | Select-Object -First 1
+          if (!$file) { throw 'SignPath nu a returnat installerul semnat.' }
+          Copy-Item $file.FullName "installer/output/JocuriSiDiscutii-Setup-${{ matrix.arch }}.exe" -Force
+
+      - name: Verifică semnătura și hash-ul
+        if: env.SIGNING_ENABLED == 'true'
+        shell: pwsh
+        run: |
+          $files = @("installer/staging/${{ matrix.rid }}/JocuriSiDiscutii.exe", "installer/staging/${{ matrix.rid }}/updater/CrisGameRoomUpdater.exe", "installer/output/JocuriSiDiscutii-Setup-${{ matrix.arch }}.exe")
+          foreach ($file in $files) {
+            $sig = Get-AuthenticodeSignature $file
+            if ($sig.Status -ne 'Valid') { throw "Semnătură invalidă: $file ($($sig.Status))" }
+            Write-Host "$file : $($sig.Status) - $($sig.SignerCertificate.Subject)"
+            Get-FileHash $file -Algorithm SHA256
+          }
+
+      - name: Publică artefactul final
+        uses: actions/upload-artifact@v4
+        with:
+          name: JocuriSiDiscutii-Setup-${{ matrix.arch }}-${{ github.run_id }}
           path: installer/output/JocuriSiDiscutii-Setup-${{ matrix.arch }}.exe
           if-no-files-found: error
           retention-days: 30

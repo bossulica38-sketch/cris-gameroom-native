@@ -4,31 +4,37 @@ Jocuri și Discuții — client nativ Windows pentru platforma CRIS GameRoom.
 
 ## Platforme
 
-- Windows 10
-- Windows 11
-- x64
-- x86
+- Windows 10 și Windows 11
+- x64 și x86
 
 ## Funcționalități
 
 - autentificare nativă
 - camere GameRoom
-- comunicare API
-- comunicare realtime
-- verificare versiune
-- actualizare automată
-- instalare și dezinstalare
-- accesibilitate Windows
+- comunicare API și în timp real
+- verificarea versiunii disponibile
+- actualizare automată cu verificare SHA-256 și revenire la fișierele anterioare în caz de eroare
+- instalare per utilizator și dezinstalare
+- suport pentru accesibilitate Windows
 
 ## Limbi
 
 Română, engleză, portugheză, turcă, italiană, spaniolă, germană, franceză, neerlandeză și poloneză.
 
+## Descărcare
+
+Instalatoarele Windows sunt publicate la:
+
+https://criswebhost.ro/downloads/gameroom/stable/index.html
+
 ## Licență
 
-MIT\n\n\
+MIT — vezi [LICENSE](LICENSE).
+
 ## Code signing policy
 
-Free code signing provided by SignPath.io, certificate by SignPath Foundation.
+Vezi [Code signing policy](CODE-SIGNING-POLICY.md). Solicitarea pentru semnare gratuită prin SignPath Foundation este în pregătire și nu este prezentată ca aprobată.
 
-The project follows the published CRIS GameRoom [Code signing policy](CODE-SIGNING-POLICY.md).
+## Integrare SignPath Foundation
+
+Instrucțiunile pentru configurarea semnării automate sunt în [SIGNPATH_SETUP.md](SIGNPATH_SETUP.md).

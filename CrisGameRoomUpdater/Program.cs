@@ -48,33 +48,119 @@ internal static class Program
         return Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
     }
 
-    private static bool WaitForProcessExit(int processId, string log)
+    private static bool WaitForProcessExit(int processId, string target, string log)
     {
-        try
+        string expected = Path.GetFullPath(target);
+        string processName = Path.GetFileNameWithoutExtension(expected);
+        var matching = new List<Process>();
+
+        // Închidem toate instanțele aceleiași aplicații din aceeași locație,
+        // nu doar PID-ul inițial. O instanță secundară poate ține EXE-ul blocat.
+        for (int attempt = 1; attempt <= 15; attempt++)
         {
-            using var process = Process.GetProcessById(processId);
-
-            for (int second = 1; second <= 120; second++)
+            matching.Clear();
+            foreach (var candidate in Process.GetProcessesByName(processName))
             {
-                if (process.HasExited)
+                try
                 {
-                    Log(log, $"ORIGINAL_PROCESS_EXITED_AFTER={second}s");
-                    return true;
+                    string? path = candidate.MainModule?.FileName;
+                    if (!string.IsNullOrWhiteSpace(path) &&
+                        string.Equals(Path.GetFullPath(path), expected,
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        matching.Add(candidate);
+                    }
+                    else candidate.Dispose();
                 }
-
-                if (second % 10 == 0)
-                    Log(log, $"PROCESS_STILL_RUNNING={second}s");
-
-                Thread.Sleep(1000);
+                catch (Exception ex)
+                {
+                    Log(log, $"PROCESS_ENUM_WARNING={candidate.Id} {ex.GetType().Name}: {ex.Message}");
+                    candidate.Dispose();
+                }
             }
 
-            return false;
+            if (matching.Count == 0)
+            {
+                Log(log, $"ALL_TARGET_INSTANCES_EXITED_ATTEMPT={attempt}");
+                return true;
+            }
+
+            if (attempt == 1)
+                Log(log, $"MATCHING_TARGET_INSTANCES={matching.Count}; REQUESTING_CLOSE");
+
+            foreach (var process in matching)
+            {
+                try
+                {
+                    if (!process.HasExited) process.CloseMainWindow();
+                }
+                catch (Exception ex)
+                {
+                    Log(log, $"CLOSE_REQUEST_WARNING={process.Id} {ex.Message}");
+                }
+            }
+
+            Thread.Sleep(1000);
         }
-        catch (ArgumentException)
+
+        // Procesele confirmate după calea completă sunt singurele terminate.
+        matching.Clear();
+        foreach (var candidate in Process.GetProcessesByName(processName))
         {
-            Log(log, "ORIGINAL_PROCESS_ALREADY_EXITED");
-            return true;
+            try
+            {
+                string? path = candidate.MainModule?.FileName;
+                if (!string.IsNullOrWhiteSpace(path) &&
+                    string.Equals(Path.GetFullPath(path), expected,
+                        StringComparison.OrdinalIgnoreCase))
+                    matching.Add(candidate);
+                else candidate.Dispose();
+            }
+            catch { candidate.Dispose(); }
         }
+
+        foreach (var process in matching)
+        {
+            try
+            {
+                if (!process.HasExited)
+                {
+                    Log(log, $"FORCE_TERMINATING_TARGET_PID={process.Id}");
+                    process.Kill(entireProcessTree: true);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log(log, $"FORCE_TERMINATE_WARNING={process.Id} {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+
+        foreach (var process in matching)
+        {
+            try { process.WaitForExit(10000); }
+            catch { }
+            process.Dispose();
+        }
+
+        bool parentExited;
+        try { using var parent = Process.GetProcessById(processId); parentExited = parent.HasExited; }
+        catch (ArgumentException) { parentExited = true; }
+        catch { parentExited = false; }
+
+        bool anyRemaining = Process.GetProcessesByName(processName).Any(p =>
+        {
+            try
+            {
+                bool same = string.Equals(Path.GetFullPath(p.MainModule?.FileName ?? ""), expected,
+                    StringComparison.OrdinalIgnoreCase);
+                p.Dispose();
+                return same;
+            }
+            catch { p.Dispose(); return false; }
+        });
+
+        Log(log, $"PARENT_EXITED={parentExited}; TARGET_INSTANCES_REMAIN={anyRemaining}");
+        return parentExited && !anyRemaining;
     }
 
     private static bool IsInsideDirectory(string path, string directory)
@@ -172,7 +258,7 @@ internal static class Program
                 throw new InvalidOperationException("URL_PACHET_NEACCEPTAT");
             }
 
-            if (!WaitForProcessExit(processId, log))
+            if (!WaitForProcessExit(processId, target, log))
                 throw new TimeoutException("PROCESUL_APLICAȚIEI_NU_S_A_ÎNCHIS");
 
             string installDirectory = Path.GetDirectoryName(target)

@@ -263,10 +263,10 @@ public partial class PlatformShellWindow : Window
         ApplyTextScale();
     }
 
-    private async Task ActivateSelectedItemAsync()
+    private Task ActivateSelectedItemAsync()
     {
         if (IsEnabled == false || _logoutInProgress)
-            return;
+            return Task.CompletedTask;
 
         switch (SelectedKey)
         {
@@ -290,6 +290,7 @@ public partial class PlatformShellWindow : Window
 
         NavigationMenu.Focus();
         Keyboard.Focus(NavigationMenu);
+        return Task.CompletedTask;
     }
 
     private void OpenRoomWindow(bool triggerCreateAction)

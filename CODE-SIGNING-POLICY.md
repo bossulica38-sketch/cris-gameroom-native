@@ -2,48 +2,38 @@
 
 ## CRIS GameRoom
 
-Free code signing provided by SignPath.io, certificate by SignPath Foundation.
-
-CRIS GameRoom is an open-source Windows application maintained in the public repository:
+CRIS GameRoom este o aplicație Windows open-source, distribuită sub licența MIT și întreținută în repository-ul public:
 
 https://github.com/bossulica38-sketch/cris-gameroom-native
 
-## Team roles
+Solicitarea pentru semnare gratuită prin SignPath Foundation este în pregătire. Mențiunea „Free code signing provided by SignPath.io, certificate by SignPath Foundation” va fi publicată după acceptarea oficială a proiectului.
 
-### Committers and reviewers
-CRIS GameRoom maintainers.
+## Responsabilități
 
-All source-code and build changes are maintained in the public GitHub repository.
+- Autori și committers: administratorii repository-ului care au drept de scriere în proiect.
+- Revieweri: maintainerii proiectului; modificările externe sunt verificate înainte de includere.
+- Aprobatori: proprietarul repository-ului GitHub `bossulica38-sketch`, responsabil de aprobarea fiecărei versiuni trimise la semnare.
 
-### Approvers
-The CRIS GameRoom project owner is responsible for approving releases submitted for code signing.
+Codul sursă și configurația de compilare sunt păstrate în repository-ul public. Fiecare versiune destinată semnării trebuie să provină dintr-un commit identificabil.
 
-Every signed release must correspond to source code and build configuration present in the public repository.
+## Integritatea compilării
 
-## Build integrity
+Aplicația și actualizatorul sunt compilate din sursele proiectului folosind GitHub Actions pe agenți Windows găzduiți de GitHub. Instalatorul este generat din aceste executabile cu NSIS.
 
-Signed binaries are built from the source code in this repository.
+Nu folosim certificate autogenerate ca substitut pentru semnarea publică de încredere. Nu păstrăm chei private de semnare în repository sau în webroot.
 
-Release artifacts are produced from the corresponding Git commit and version.
+## Confidențialitate
 
-The project does not intentionally include malware, potentially unwanted software, hacking tools, or functionality designed to circumvent Windows security mechanisms.
+Aplicația comunică cu serviciul CRIS GameRoom pentru funcțiile cerute de utilizator: autentificare, camere, comunicare în timp real și verificarea/descărcarea actualizărilor. Nu transferă alte informații către sisteme externe fără solicitarea utilizatorului sau a persoanei care instalează ori operează aplicația.
 
-## Privacy
+## Lansări și aprobare
 
-This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it.
+Fiecare versiune trimisă la semnare trebuie aprobată manual. Executabilele semnate trebuie să corespundă surselor, configurației de compilare și versiunii publicate.
 
-The application communicates with the CRIS GameRoom service only for functionality explicitly requested by the user, including authentication, rooms, realtime communication, and application updates.
+## Instalare și dezinstalare
 
-## Releases
+Instalatorul Windows oferă dezinstalare automată. Instalarea este per utilizator și nu ar trebui să necesite drepturi de administrator.
 
-Every release submitted for signing must be manually approved.
+## Licență
 
-The signed binaries must correspond to the released source code and build configuration.
-
-## Installation and removal
-
-The Windows installer provides an automated uninstallation facility.
-
-## License
-
-CRIS GameRoom is released under the MIT License.
+CRIS GameRoom este distribuit sub licența MIT. Licența și notificările aplicabile sunt incluse în repository.

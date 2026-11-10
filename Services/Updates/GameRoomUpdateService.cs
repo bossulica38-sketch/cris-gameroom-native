@@ -11,12 +11,6 @@ namespace CrisGameRoom.Services.Updates;
 
 public sealed class GameRoomUpdateService
 {
-    private const string UpdaterUrlX64 = "https://criswebhost.ro/downloads/gameroom/stable/1.0.9/CrisGameRoomUpdater-win-x64.exe";
-    private const string UpdaterUrlX86 = "https://criswebhost.ro/downloads/gameroom/stable/1.0.9/CrisGameRoomUpdater-win-x86.exe";
-    private const string UpdaterSha256X64 = "739f7bd847e30f5106850bc220408b04aa37ef985a1efd5c22efea2a514cf4dc";
-    private const string UpdaterSha256X86 = "391fcbe96875d775028e1e87163303d8333e1f201d9a7b753a57eba0ecad075b";
-
-
     private static string ManifestUrl => System.Environment.Is64BitProcess
         ? "https://criswebhost.ro/downloads/gameroom/stable/auto-update-x64.json"
         : "https://criswebhost.ro/downloads/gameroom/stable/auto-update-x86.json";
@@ -110,13 +104,12 @@ public sealed class GameRoomUpdateService
                 "Manifestul nu conține un SHA-256 valid pentru pachet.");
         }
 
-        var updater = EnsureUpdaterInstalled();
+        var updater = EnsureUpdaterInstalled(info);
 
         var process = Process.Start(new ProcessStartInfo
         {
             FileName = updater,
             UseShellExecute = true,
-            Verb = "runas",
             WorkingDirectory = Path.GetDirectoryName(updater)!,
             Arguments =
                 $"--pid {Environment.ProcessId} " +
@@ -131,7 +124,7 @@ public sealed class GameRoomUpdateService
                 "Windows nu a putut porni actualizatorul.");
     }
 
-    private string EnsureUpdaterInstalled()
+    private string EnsureUpdaterInstalled(UpdateInfo info)
     {
         string directory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -140,24 +133,24 @@ public sealed class GameRoomUpdateService
 
         Directory.CreateDirectory(directory);
 
-        string updater = Path.Combine(directory, "CrisGameRoomUpdater.exe");
+        // Fiecare lansare primește un executabil separat. Astfel, o instanță
+        // rămasă blocată de Windows nu împiedică descărcarea sau pornirea următoarei.
+        string updater = Path.Combine(
+            directory,
+            $"CrisGameRoomUpdater-{Guid.NewGuid():N}.exe");
         bool is64 = Environment.Is64BitProcess;
-        string url = is64 ? UpdaterUrlX64 : UpdaterUrlX86;
-        string expectedHash = is64 ? UpdaterSha256X64 : UpdaterSha256X86;
+        string url = is64 ? info.UpdaterUrlX64 : info.UpdaterUrlX86;
+        string expectedHash = is64 ? info.UpdaterSha256X64 : info.UpdaterSha256X86;
 
-        if (File.Exists(updater))
+        if (!System.Uri.TryCreate(url, System.UriKind.Absolute, out var updaterUri) ||
+            updaterUri.Scheme != System.Uri.UriSchemeHttps ||
+            !string.Equals(updaterUri.Host, "criswebhost.ro", System.StringComparison.OrdinalIgnoreCase) ||
+            !updaterUri.AbsolutePath.StartsWith("/downloads/gameroom/stable/", System.StringComparison.OrdinalIgnoreCase) ||
+            !updaterUri.AbsolutePath.EndsWith(".exe", System.StringComparison.OrdinalIgnoreCase) ||
+            !System.Text.RegularExpressions.Regex.IsMatch(expectedHash ?? "", "^[0-9a-fA-F]{64}$"))
         {
-            string existingHash = ComputeSha256Async(
-                updater,
-                CancellationToken.None).GetAwaiter().GetResult();
-
-            if (string.Equals(
-                existingHash,
-                expectedHash,
-                StringComparison.OrdinalIgnoreCase))
-            {
-                return updater;
-            }
+            throw new System.InvalidOperationException(
+                "Manifestul nu conține un URL oficial și un SHA-256 valid pentru actualizator.");
         }
 
         string temporary = updater + ".download";
@@ -175,18 +168,23 @@ public sealed class GameRoomUpdateService
 
             response.EnsureSuccessStatusCode();
 
-            using var input = response.Content.ReadAsStream();
-            using var output = new FileStream(
-                temporary,
-                FileMode.Create,
-                FileAccess.Write,
-                FileShare.None,
-                1024 * 1024,
-                FileOptions.SequentialScan | FileOptions.WriteThrough);
+            using (var input = response.Content.ReadAsStream())
+            {
+                using (var output = new FileStream(
+                    temporary,
+                    FileMode.CreateNew,
+                    FileAccess.Write,
+                    FileShare.None,
+                    1024 * 1024,
+                    FileOptions.SequentialScan | FileOptions.WriteThrough))
+                {
+                    input.CopyTo(output);
+                    output.Flush(true);
+                }
+            }
 
-            input.CopyTo(output);
-            output.Flush(true);
-
+            // Fluxul de scriere este închis înainte de redeschiderea fișierului
+            // pentru SHA-256; FileShare.None interzice citirea cât timp e deschis.
             string downloadedHash = ComputeSha256Async(
                 temporary,
                 CancellationToken.None).GetAwaiter().GetResult();

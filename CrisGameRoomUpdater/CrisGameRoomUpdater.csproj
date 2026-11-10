@@ -4,6 +4,7 @@
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <AssemblyName>CrisGameRoomUpdater</AssemblyName>
     <RootNamespace>CrisGameRoomUpdater</RootNamespace>
@@ -15,13 +16,13 @@
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
       <ApplicationManifest>app.manifest</ApplicationManifest>
     <Company>Cris GameRoom</Company>
-    <Product>Cris GameRoom Actualizator</Product>
+    <Product>Jocuri și Discuții</Product>
     <Description>Actualizatorul oficial pentru Jocuri și Discuții.</Description>
     <Copyright>Copyright © 2026 Cris GameRoom. Toate drepturile rezervate.</Copyright>
     <Authors>Cris GameRoom</Authors>
-    <AssemblyInformationalVersion>1.0.2</AssemblyInformationalVersion>
-    <AssemblyVersion>1.0.2.0</AssemblyVersion>
-    <FileVersion>1.0.2.0</FileVersion>
-    <Version>1.0.2</Version>
+    <AssemblyInformationalVersion>1.0.13</AssemblyInformationalVersion>
+    <AssemblyVersion>1.0.13.0</AssemblyVersion>
+    <FileVersion>1.0.13.0</FileVersion>
+    <Version>1.0.13</Version>
 </PropertyGroup>
 </Project>
