@@ -53,9 +53,9 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force installer/output | Out-Null
           if ('${{ matrix.arch }}' -eq 'x64') {
-            makensis installer/nsis/JocuriSiDiscutii-x64.nsi
+            & "C:\Program Files (x86)\NSIS\makensis.exe" installer/nsis/JocuriSiDiscutii-x64.nsi
           } else {
-            makensis installer/nsis/JocuriSiDiscutii-x86.nsi
+            & "C:\Program Files (x86)\NSIS\makensis.exe" installer/nsis/JocuriSiDiscutii-x86.nsi
           }
 
       - name: Verifică pachetul
