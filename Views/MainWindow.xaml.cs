@@ -128,29 +128,47 @@ public partial class MainWindow : Window
 
     private void MainWindow_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
-        if (e.Key == System.Windows.Input.Key.F4 &&
-            System.Windows.Input.Keyboard.Modifiers == System.Windows.Input.ModifierKeys.Alt)
-        {
-            e.Handled = true;
-            Close();
-            return;
-        }
-
         if (e.Key == System.Windows.Input.Key.Escape)
         {
             e.Handled = true;
         }
     }
 
-    private void CreateTableButton_Click(object sender, RoutedEventArgs e)
+    private async void CreateTableButton_Click(object sender, RoutedEventArgs e)
     {
-        MessageBox.Show(
-            "Crearea unei table noi va fi deschisă aici.\n\n" +
-            "Tabla va fi PUBLICĂ în mod implicit. " +
-            "Ctrl+H va comuta între PUBLICĂ și PRIVATĂ.",
-            "Creează o tablă nouă",
-            MessageBoxButton.OK,
-            MessageBoxImage.Information);
+        var createWindow = new CreateTableWindow { Owner = this };
+        if (createWindow.ShowDialog() != true || createWindow.CreatedRoom is null)
+            return;
+
+        try
+        {
+            var room = createWindow.CreatedRoom;
+            if (!App.Realtime.IsConnected)
+            {
+                var session = await App.Sessions.LoadAsync();
+                if (session is not null && !string.IsNullOrWhiteSpace(session.AccessToken))
+                    await App.Realtime.ConnectAsync(session.AccessToken);
+            }
+
+            if (App.Realtime.IsConnected)
+                await App.Realtime.JoinRoomAsync(room.Code);
+
+            var tableWindow = new RoomTableWindow(room) { Owner = this };
+            Hide();
+            tableWindow.Closed += (_, _) =>
+            {
+                if (!IsVisible) Show();
+                Activate();
+            };
+            tableWindow.Show();
+        }
+        catch (Exception ex)
+        {
+            if (!IsVisible) Show();
+            Activate();
+            MessageBox.Show(this, "Tabla a fost creată, dar conectarea la sesiunea de joc nu a putut fi inițializată.\n\n" + ex.Message,
+                "CRIS GAMEROOM", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private async void JoinTableButton_Click(object sender, RoutedEventArgs e)

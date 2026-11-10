@@ -3,6 +3,7 @@ using CrisGameRoom.Localization;
 using CrisGameRoom.Services.Api;
 using CrisGameRoom.Services.Authentication;
 using CrisGameRoom.Services.Realtime;
+using System.Windows.Input;
 
 namespace CrisGameRoom;
 
@@ -15,6 +16,11 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        EventManager.RegisterClassHandler(
+            typeof(Window),
+            Keyboard.PreviewKeyDownEvent,
+            new KeyEventHandler(GlobalWindow_PreviewKeyDown),
+            true);
         LocalizationManager.ApplyCurrentCulture();
 
         var logDirectory = System.IO.Path.Combine(
@@ -111,6 +117,15 @@ public partial class App : Application
                 MessageBoxImage.Error);
 
             Shutdown(1);
+        }
+    }
+
+    private void GlobalWindow_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.F4 && Keyboard.Modifiers == ModifierKeys.Alt)
+        {
+            e.Handled = true;
+            Shutdown();
         }
     }
 
